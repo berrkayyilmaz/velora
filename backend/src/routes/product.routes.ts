@@ -4,11 +4,13 @@ import type { ZodError } from "zod";
 import { requireUserAuth } from "../middleware/auth.middleware.js";
 import {
   productDetailResponseSchema,
+  productFilterOptionsResponseSchema,
   productListQuerySchema,
   productListResponseSchema,
   productParamsSchema
 } from "../schemas/product.schemas.js";
 import {
+  getProductFilterOptions,
   getProductDetail,
   listProducts,
   ProductServiceError
@@ -60,6 +62,17 @@ const productRoutes: FastifyPluginCallback = (app, _options, done) => {
         parsedQuery.data
       );
       const response = productListResponseSchema.parse(products);
+
+      return reply.status(200).send(response);
+    } catch (error) {
+      return sendProductError(reply, error);
+    }
+  });
+
+  app.get("/filter-options", { preHandler: requireUserAuth }, async (_request, reply) => {
+    try {
+      const filterOptions = await getProductFilterOptions(app.prisma);
+      const response = productFilterOptionsResponseSchema.parse(filterOptions);
 
       return reply.status(200).send(response);
     } catch (error) {

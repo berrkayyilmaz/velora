@@ -66,6 +66,11 @@ const paginationSchema = z.object({
   hasNextPage: z.boolean()
 });
 
+const priceRangeSchema = z.object({
+  minPrice: z.string(),
+  maxPrice: z.string()
+});
+
 export const productListResponseSchema = z.object({
   data: z.object({
     items: z.array(productSummarySchema)
@@ -79,8 +84,19 @@ export const productDetailResponseSchema = z.object({
   data: productDetailSchema
 });
 
+export const productFilterOptionsResponseSchema = z.object({
+  data: z.object({
+    brands: z.array(catalogRecordSchema),
+    categories: z.array(catalogRecordSchema),
+    sourcePlatforms: z.array(catalogRecordSchema),
+    colors: z.array(z.string()),
+    priceRange: priceRangeSchema.nullable()
+  })
+});
+
 export type ProductListQuery = z.infer<typeof productListQuerySchema>;
 export type ProductParams = z.infer<typeof productParamsSchema>;
 export type ProductSummaryResponse = z.infer<typeof productSummarySchema>;
 export type ProductDetailResponse = z.infer<typeof productDetailSchema>;
 export type ProductListResponse = z.infer<typeof productListResponseSchema>;
+export type ProductFilterOptionsResponse = z.infer<typeof productFilterOptionsResponseSchema>;

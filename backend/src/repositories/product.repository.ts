@@ -43,6 +43,21 @@ export type ProductDetailRecord = Prisma.ProductGetPayload<{
   select: typeof productDetailSelect;
 }>;
 
+export type ProductFilterCatalogRecord = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type ProductFilterOptionsRecord = {
+  brands: ProductFilterCatalogRecord[];
+  categories: ProductFilterCatalogRecord[];
+  sourcePlatforms: ProductFilterCatalogRecord[];
+  colors: string[];
+  minPrice: ProductSummaryRecord["price"] | null;
+  maxPrice: ProductSummaryRecord["price"] | null;
+};
+
 type ProductListResult = {
   products: ProductSummaryRecord[];
   total: number;
@@ -117,6 +132,84 @@ export async function findActiveProductById(
     },
     select: productDetailSelect
   });
+}
+
+export async function findActiveProductFilterOptions(
+  prisma: PrismaClient
+): Promise<ProductFilterOptionsRecord> {
+  const [brands, categories, sourcePlatforms, colors, priceRange] = await prisma.$transaction([
+    prisma.brand.findMany({
+      where: {
+        products: {
+          some: {
+            isActive: true
+          }
+        }
+      },
+      select: catalogRecordSelect,
+      orderBy: {
+        name: "asc"
+      }
+    }),
+    prisma.category.findMany({
+      where: {
+        products: {
+          some: {
+            isActive: true
+          }
+        }
+      },
+      select: catalogRecordSelect,
+      orderBy: {
+        name: "asc"
+      }
+    }),
+    prisma.sourcePlatform.findMany({
+      where: {
+        products: {
+          some: {
+            isActive: true
+          }
+        }
+      },
+      select: catalogRecordSelect,
+      orderBy: {
+        name: "asc"
+      }
+    }),
+    prisma.product.findMany({
+      where: {
+        isActive: true
+      },
+      distinct: ["color"],
+      select: {
+        color: true
+      },
+      orderBy: {
+        color: "asc"
+      }
+    }),
+    prisma.product.aggregate({
+      where: {
+        isActive: true
+      },
+      _min: {
+        price: true
+      },
+      _max: {
+        price: true
+      }
+    })
+  ]);
+
+  return {
+    brands,
+    categories,
+    sourcePlatforms,
+    colors: colors.map((product) => product.color),
+    minPrice: priceRange._min.price,
+    maxPrice: priceRange._max.price
+  };
 }
 
 export async function findFavoritedProductIds(

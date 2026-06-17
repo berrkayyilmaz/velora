@@ -157,11 +157,8 @@ Not implemented yet:
 ### Products
 
 - `GET /api/v1/products`
-- `GET /api/v1/products/:id`
-
-Not implemented yet:
-
 - `GET /api/v1/products/filter-options`
+- `GET /api/v1/products/:id`
 
 ### Wishlist
 

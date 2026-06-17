@@ -2,13 +2,16 @@ import type { PrismaClient } from "@prisma/client";
 
 import {
   findActiveProductById,
+  findActiveProductFilterOptions,
   findActiveProducts,
   findFavoritedProductIds,
   type ProductDetailRecord,
+  type ProductFilterOptionsRecord,
   type ProductSummaryRecord
 } from "../repositories/product.repository.js";
 import type {
   ProductDetailResponse,
+  ProductFilterOptionsResponse,
   ProductListQuery,
   ProductListResponse,
   ProductSummaryResponse
@@ -57,6 +60,24 @@ function toProductDetail(
   };
 }
 
+function toProductFilterOptions(options: ProductFilterOptionsRecord): ProductFilterOptionsResponse {
+  return {
+    data: {
+      brands: options.brands,
+      categories: options.categories,
+      sourcePlatforms: options.sourcePlatforms,
+      colors: options.colors,
+      priceRange:
+        options.minPrice === null || options.maxPrice === null
+          ? null
+          : {
+              minPrice: options.minPrice.toString(),
+              maxPrice: options.maxPrice.toString()
+            }
+    }
+  };
+}
+
 export async function listProducts(
   prisma: PrismaClient,
   userId: string,
@@ -100,4 +121,12 @@ export async function getProductDetail(
   const favoritedProductIds = new Set(await findFavoritedProductIds(prisma, userId, [product.id]));
 
   return toProductDetail(product, favoritedProductIds);
+}
+
+export async function getProductFilterOptions(
+  prisma: PrismaClient
+): Promise<ProductFilterOptionsResponse> {
+  const options = await findActiveProductFilterOptions(prisma);
+
+  return toProductFilterOptions(options);
 }
