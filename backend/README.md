@@ -2,9 +2,8 @@
 
 Fastify, TypeScript, Prisma, PostgreSQL, and Zod backend for the Velora MVP.
 
-The backend currently exposes routes at the root API path, such as `/health` and
-`/auth/login`. `docs/API_SPEC.md` defines `/api/v1` as the target API base path,
-but that prefix is not registered in the current implementation.
+The backend exposes MVP API routes under `/api/v1`, matching `docs/API_SPEC.md`.
+The infrastructure health check also remains available at `/health`.
 
 ## Prerequisites
 
@@ -112,6 +111,12 @@ Health check:
 GET http://localhost:4000/health
 ```
 
+Versioned API health check:
+
+```text
+GET http://localhost:4000/api/v1/health
+```
+
 ## Validation Commands
 
 From `backend/`:
@@ -125,16 +130,18 @@ npm.cmd run build
 
 ## Implemented Endpoint Groups
 
-Current route prefixes do not include `/api/v1`.
+MVP API routes are served under `/api/v1`. The infrastructure health check also
+remains available at `/health`.
 
 ### Health
 
 - `GET /health`
+- `GET /api/v1/health`
 
 ### User Authentication
 
-- `POST /auth/register`
-- `POST /auth/login`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
 
 Not implemented yet:
 
@@ -144,46 +151,46 @@ Not implemented yet:
 
 ### User Profile
 
-- `GET /profile`
-- `PATCH /profile`
+- `GET /api/v1/profile`
+- `PATCH /api/v1/profile`
 
 ### Products
 
-- `GET /products`
-- `GET /products/:id`
+- `GET /api/v1/products`
+- `GET /api/v1/products/:id`
 
 Not implemented yet:
 
-- `GET /products/filter-options`
+- `GET /api/v1/products/filter-options`
 
 ### Wishlist
 
-- `GET /wishlist`
-- `POST /wishlist/items`
-- `DELETE /wishlist/items/:productId`
+- `GET /api/v1/wishlist`
+- `POST /api/v1/wishlist/items`
+- `DELETE /api/v1/wishlist/items/:productId`
 
 ### Outfits
 
-- `GET /outfits`
-- `POST /outfits`
-- `GET /outfits/:id`
-- `PATCH /outfits/:id`
-- `DELETE /outfits/:id`
-- `POST /outfits/:id/products`
-- `DELETE /outfits/:id/products/:productId`
+- `GET /api/v1/outfits`
+- `POST /api/v1/outfits`
+- `GET /api/v1/outfits/:id`
+- `PATCH /api/v1/outfits/:id`
+- `DELETE /api/v1/outfits/:id`
+- `POST /api/v1/outfits/:id/products`
+- `DELETE /api/v1/outfits/:id/products/:productId`
 
 ### Retailer Redirects
 
-- `POST /redirects`
+- `POST /api/v1/redirects`
 
 ### Analytics Events
 
-- `POST /analytics/events`
+- `POST /api/v1/analytics/events`
 
 ### Admin Authentication
 
-- `POST /admin/auth/login`
-- `GET /admin/me`
+- `POST /api/v1/admin/auth/login`
+- `GET /api/v1/admin/me`
 
 Not implemented yet:
 
@@ -191,33 +198,33 @@ Not implemented yet:
 
 ### Admin Product Management
 
-- `GET /admin/products`
-- `POST /admin/products`
-- `GET /admin/products/:id`
-- `PATCH /admin/products/:id`
-- `DELETE /admin/products/:id`
+- `GET /api/v1/admin/products`
+- `POST /api/v1/admin/products`
+- `GET /api/v1/admin/products/:id`
+- `PATCH /api/v1/admin/products/:id`
+- `DELETE /api/v1/admin/products/:id`
 
 Not implemented yet:
 
-- `POST /admin/products/imports`
+- `POST /api/v1/admin/products/imports`
 
 ### Admin Catalog Management
 
-- `GET /admin/brands`
-- `POST /admin/brands`
-- `PATCH /admin/brands/:id`
-- `GET /admin/categories`
-- `POST /admin/categories`
-- `PATCH /admin/categories/:id`
-- `GET /admin/source-platforms`
-- `POST /admin/source-platforms`
-- `PATCH /admin/source-platforms/:id`
+- `GET /api/v1/admin/brands`
+- `POST /api/v1/admin/brands`
+- `PATCH /api/v1/admin/brands/:id`
+- `GET /api/v1/admin/categories`
+- `POST /api/v1/admin/categories`
+- `PATCH /api/v1/admin/categories/:id`
+- `GET /api/v1/admin/source-platforms`
+- `POST /api/v1/admin/source-platforms`
+- `PATCH /api/v1/admin/source-platforms/:id`
 
 ### Admin Analytics
 
-- `GET /admin/analytics/summary`
-- `GET /admin/analytics/events`
-- `GET /admin/analytics/redirects`
+- `GET /api/v1/admin/analytics/summary`
+- `GET /api/v1/admin/analytics/events`
+- `GET /api/v1/admin/analytics/redirects`
 
 ## Notes
 

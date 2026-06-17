@@ -15,6 +15,8 @@ import profileRoutes from "./routes/profile.routes.js";
 import redirectRoutes from "./routes/redirect.routes.js";
 import wishlistRoutes from "./routes/wishlist.routes.js";
 
+const API_PREFIX = "/api/v1";
+
 export function buildApp(): FastifyInstance {
   const app = Fastify({
     logger: env.NODE_ENV !== "test"
@@ -22,17 +24,18 @@ export function buildApp(): FastifyInstance {
 
   app.register(prismaPlugin);
   app.register(healthRoutes, { prefix: "/health" });
-  app.register(authRoutes, { prefix: "/auth" });
-  app.register(profileRoutes, { prefix: "/profile" });
-  app.register(productRoutes, { prefix: "/products" });
-  app.register(wishlistRoutes, { prefix: "/wishlist" });
-  app.register(outfitRoutes, { prefix: "/outfits" });
-  app.register(redirectRoutes, { prefix: "/redirects" });
-  app.register(analyticsRoutes, { prefix: "/analytics" });
-  app.register(adminRoutes, { prefix: "/admin" });
-  app.register(adminCatalogRoutes, { prefix: "/admin" });
-  app.register(adminAnalyticsRoutes, { prefix: "/admin/analytics" });
-  app.register(adminProductRoutes, { prefix: "/admin/products" });
+  app.register(healthRoutes, { prefix: `${API_PREFIX}/health` });
+  app.register(authRoutes, { prefix: `${API_PREFIX}/auth` });
+  app.register(profileRoutes, { prefix: `${API_PREFIX}/profile` });
+  app.register(productRoutes, { prefix: `${API_PREFIX}/products` });
+  app.register(wishlistRoutes, { prefix: `${API_PREFIX}/wishlist` });
+  app.register(outfitRoutes, { prefix: `${API_PREFIX}/outfits` });
+  app.register(redirectRoutes, { prefix: `${API_PREFIX}/redirects` });
+  app.register(analyticsRoutes, { prefix: `${API_PREFIX}/analytics` });
+  app.register(adminRoutes, { prefix: `${API_PREFIX}/admin` });
+  app.register(adminCatalogRoutes, { prefix: `${API_PREFIX}/admin` });
+  app.register(adminAnalyticsRoutes, { prefix: `${API_PREFIX}/admin/analytics` });
+  app.register(adminProductRoutes, { prefix: `${API_PREFIX}/admin/products` });
 
   return app;
 }
