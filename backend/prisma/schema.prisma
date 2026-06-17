@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String               @id @default(uuid()) @db.Uuid
+  email               String               @unique
+  passwordHash        String
+  displayName         String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  wishlist            Wishlist?
+  outfits             Outfit[]
+  analyticsEvents     AnalyticsEvent[]
+  redirectEvents      RedirectEvent[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@index([createdAt])
+}
+
+model AdminUser {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Brand {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model Category {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model SourcePlatform {
+  id             String          @id @default(uuid()) @db.Uuid
+  name           String          @unique
+  slug           String          @unique
+  baseUrl        String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  products       Product[]
+  redirectEvents RedirectEvent[]
+}
+
+model Product {
+  id               String           @id @default(uuid()) @db.Uuid
+  title            String
+  brandId          String           @db.Uuid
+  categoryId       String           @db.Uuid
+  sourcePlatformId String           @db.Uuid
+  price            Decimal          @db.Decimal(10, 2)
+  imageUrl         String
+  productUrl       String
+  color            String
+  description      String?
+  availableColors  String[]         @default([])
+  tags             String[]         @default([])
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  brand            Brand            @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  category         Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  sourcePlatform   SourcePlatform   @relation(fields: [sourcePlatformId], references: [id], onDelete: Restrict)
+  wishlistItems    WishlistItem[]
+  outfitProducts   OutfitProduct[]
+  analyticsEvents  AnalyticsEvent[]
+  redirectEvents   RedirectEvent[]
+
+  @@index([title])
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([sourcePlatformId])
+  @@index([color])
+  @@index([price])
+  @@index([isActive])
+  @@index([categoryId, price])
+  @@index([brandId, categoryId])
+}
+
+model Wishlist {
+  id        String         @id @default(uuid()) @db.Uuid
+  userId    String         @unique @db.Uuid
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     WishlistItem[]
+}
+
+model WishlistItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  wishlistId String   @db.Uuid
+  productId  String   @db.Uuid
+  createdAt  DateTime @default(now())
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([wishlistId, productId])
+  @@index([wishlistId, createdAt])
+  @@index([productId])
+}
+
+model Outfit {
+  id              String           @id @default(uuid()) @db.Uuid
+  userId          String           @db.Uuid
+  name            String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products        OutfitProduct[]
+  analyticsEvents AnalyticsEvent[]
+  redirectEvents  RedirectEvent[]
+
+  @@index([userId])
+  @@index([userId, updatedAt])
+  @@index([createdAt])
+}
+
+model OutfitProduct {
+  id        String   @id @default(uuid()) @db.Uuid
+  outfitId  String   @db.Uuid
+  productId String   @db.Uuid
+  createdAt DateTime @default(now())
+  outfit    Outfit   @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([outfitId, productId])
+  @@index([outfitId])
+  @@index([productId])
+  @@index([createdAt])
+}
+
+model AnalyticsEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @db.Uuid
+  eventType    String
+  productId    String?  @db.Uuid
+  outfitId     String?  @db.Uuid
+  sourceScreen String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  outfit       Outfit?  @relation(fields: [outfitId], references: [id], onDelete: SetNull)
+
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([productId, eventType])
+  @@index([outfitId, eventType])
+  @@index([eventType, createdAt])
+}
+
+model RedirectEvent {
+  id               String         @id @default(uuid()) @db.Uuid
+  userId           String?        @db.Uuid
+  productId        String         @db.Uuid
+  outfitId         String?        @db.Uuid
+  sourcePlatformId String         @db.Uuid
+  sourceScreen     String
+  createdAt        DateTime       @default(now())
+  user             User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product          Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  outfit           Outfit?        @relation(fields: [outfitId], references: [id], onDelete: SetNull)
+  sourcePlatform   SourcePlatform @relation(fields: [sourcePlatformId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([productId, createdAt])
+  @@index([outfitId, createdAt])
+  @@index([sourcePlatformId, createdAt])
+  @@index([sourceScreen, createdAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
