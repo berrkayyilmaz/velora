@@ -16,7 +16,7 @@ function extractBearerToken(authorizationHeader: string | undefined): string | n
   return token;
 }
 
-export function requireUserAuth(
+export function requireAdminAuth(
   request: FastifyRequest,
   reply: FastifyReply,
   done: HookHandlerDoneFunction
@@ -27,7 +27,7 @@ export function requireUserAuth(
     reply.status(401).send({
       error: {
         code: "UNAUTHORIZED",
-        message: "Authentication is required."
+        message: "Admin authentication is required."
       }
     });
     return;
@@ -36,17 +36,17 @@ export function requireUserAuth(
   try {
     const payload = verifyAccessToken(token);
 
-    if (payload.subjectType !== "user") {
+    if (payload.subjectType !== "admin") {
       reply.status(401).send({
         error: {
           code: "UNAUTHORIZED",
-          message: "Invalid or expired access token."
+          message: "Invalid or expired admin access token."
         }
       });
       return;
     }
 
-    request.user = {
+    request.admin = {
       id: payload.sub,
       email: payload.email
     };
@@ -56,7 +56,7 @@ export function requireUserAuth(
     reply.status(401).send({
       error: {
         code: "UNAUTHORIZED",
-        message: "Invalid or expired access token."
+        message: "Invalid or expired admin access token."
       }
     });
   }

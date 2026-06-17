@@ -5,8 +5,14 @@ export type AuthenticatedUser = {
   email: string;
 };
 
+export type AuthenticatedAdmin = {
+  id: string;
+  email: string;
+};
+
 declare module "fastify" {
   interface FastifyRequest {
     user?: AuthenticatedUser;
+    admin?: AuthenticatedAdmin;
   }
 }

@@ -6,13 +6,15 @@ import { env } from "../config/env.js";
 const accessTokenPayloadSchema = z.object({
   sub: z.string().uuid(),
   email: z.string().email(),
-  tokenType: z.literal("access")
+  tokenType: z.literal("access"),
+  subjectType: z.enum(["user", "admin"]).default("user")
 });
 
 export type AccessTokenPayload = {
   sub: string;
   email: string;
   tokenType: "access";
+  subjectType: "user" | "admin";
 };
 
 export class JwtVerificationError extends Error {

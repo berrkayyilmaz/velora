@@ -46,7 +46,8 @@ function createAuthSession(user: AuthUserRecord): AuthSession {
     authToken: signAccessToken({
       sub: user.id,
       email: user.email,
-      tokenType: "access"
+      tokenType: "access",
+      subjectType: "user"
     })
   };
 }
