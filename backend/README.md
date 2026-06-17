@@ -151,8 +151,8 @@ Not implemented yet:
 
 ### User Profile
 
-- `GET /api/v1/profile`
-- `PATCH /api/v1/profile`
+- `GET /api/v1/me`
+- `PATCH /api/v1/me`
 
 ### Products
 

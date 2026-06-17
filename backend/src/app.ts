@@ -26,7 +26,7 @@ export function buildApp(): FastifyInstance {
   app.register(healthRoutes, { prefix: "/health" });
   app.register(healthRoutes, { prefix: `${API_PREFIX}/health` });
   app.register(authRoutes, { prefix: `${API_PREFIX}/auth` });
-  app.register(profileRoutes, { prefix: `${API_PREFIX}/profile` });
+  app.register(profileRoutes, { prefix: `${API_PREFIX}/me` });
   app.register(productRoutes, { prefix: `${API_PREFIX}/products` });
   app.register(wishlistRoutes, { prefix: `${API_PREFIX}/wishlist` });
   app.register(outfitRoutes, { prefix: `${API_PREFIX}/outfits` });
