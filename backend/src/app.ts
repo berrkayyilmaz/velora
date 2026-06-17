@@ -7,6 +7,7 @@ import healthRoutes from "./routes/health.routes.js";
 import outfitRoutes from "./routes/outfit.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
+import redirectRoutes from "./routes/redirect.routes.js";
 import wishlistRoutes from "./routes/wishlist.routes.js";
 
 export function buildApp(): FastifyInstance {
@@ -21,6 +22,7 @@ export function buildApp(): FastifyInstance {
   app.register(productRoutes, { prefix: "/products" });
   app.register(wishlistRoutes, { prefix: "/wishlist" });
   app.register(outfitRoutes, { prefix: "/outfits" });
+  app.register(redirectRoutes, { prefix: "/redirects" });
 
   return app;
 }
