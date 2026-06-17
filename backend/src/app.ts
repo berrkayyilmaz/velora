@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 
 import { env } from "./config/env.js";
 import prismaPlugin from "./plugins/prisma.js";
+import adminAnalyticsRoutes from "./routes/admin-analytics.routes.js";
 import adminCatalogRoutes from "./routes/admin-catalog.routes.js";
 import adminProductRoutes from "./routes/admin-product.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
@@ -30,6 +31,7 @@ export function buildApp(): FastifyInstance {
   app.register(analyticsRoutes, { prefix: "/analytics" });
   app.register(adminRoutes, { prefix: "/admin" });
   app.register(adminCatalogRoutes, { prefix: "/admin" });
+  app.register(adminAnalyticsRoutes, { prefix: "/admin/analytics" });
   app.register(adminProductRoutes, { prefix: "/admin/products" });
 
   return app;
