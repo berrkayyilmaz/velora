@@ -5,9 +5,11 @@
   "description": "AI-powered fashion discovery and virtual try-on platform.",
   "workspaces": [
     "frontend",
-    "backend"
+    "backend",
+    "admin"
   ],
   "scripts": {
+    "dev:admin": "npm --workspace admin run dev",
     "dev:frontend": "npm --workspace frontend run dev",
     "dev:backend": "npm --workspace backend run dev"
   }

@@ -5,6 +5,7 @@ dist/
 build/
 coverage/
 *.log
+*.tsbuildinfo
 
 backend/node_modules/
 backend/.env
