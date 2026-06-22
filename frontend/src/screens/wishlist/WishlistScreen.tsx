@@ -8,7 +8,7 @@ import { getApiErrorMessage } from "@/utils/api-error";
 
 export function WishlistScreen() {
   const wishlistQuery = useWishlist();
-  const removeWishlistItem = useRemoveWishlistItem();
+  const removeWishlistItem = useRemoveWishlistItem("wishlist");
   const items = wishlistQuery.data?.data.items ?? [];
 
   const renderWishlistItem = ({ item }: { item: WishlistItem }) => (

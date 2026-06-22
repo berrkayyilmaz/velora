@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { useProducts } from "@/hooks/useProducts";
 import type { ProductFilters } from "@/types/product";
 
 export function useProductCatalog() {
-  const [filters, setFilters] = useState<ProductFilters>({});
+  const { trackEvent } = useAnalytics();
+  const [filters, setCatalogFilters] = useState<ProductFilters>({});
   const productsQuery = useProducts(filters);
   const products = useMemo(
     () => productsQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
@@ -20,6 +22,20 @@ export function useProductCatalog() {
       void productsQuery.fetchNextPage();
     }
   }, [productsQuery]);
+
+  const setFilters = useCallback(
+    (nextFilters: ProductFilters) => {
+      setCatalogFilters(nextFilters);
+
+      if (Object.values(nextFilters).some((value) => value !== undefined)) {
+        trackEvent({
+          eventType: "product_filter_applied",
+          sourceScreen: "catalog"
+        });
+      }
+    },
+    [trackEvent]
+  );
 
   return {
     filters,

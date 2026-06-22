@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { productQueryKeys } from "@/hooks/useProducts";
 import {
   addWishlistItem,
@@ -7,6 +8,7 @@ import {
   removeWishlistItem
 } from "@/services/wishlist.service";
 import type { WishlistSort } from "@/types/wishlist";
+import type { AnalyticsSourceScreen } from "@/types/analytics";
 
 export const wishlistQueryKeys = {
   all: ["wishlist"] as const,
@@ -33,18 +35,38 @@ export function useWishlist(sort: WishlistSort = "newest") {
 
 export function useAddWishlistItem() {
   const queryClient = useQueryClient();
+  const { trackEvent } = useAnalytics();
 
   return useMutation({
     mutationFn: addWishlistItem,
-    onSuccess: (_item, productId) => invalidateWishlistAndProducts(queryClient, productId)
+    onSuccess: (_item, productId) => {
+      trackEvent({
+        eventType: "product_favorited",
+        productId,
+        sourceScreen: "product_detail"
+      });
+
+      return invalidateWishlistAndProducts(queryClient, productId);
+    }
   });
 }
 
-export function useRemoveWishlistItem() {
+export function useRemoveWishlistItem(
+  sourceScreen: AnalyticsSourceScreen = "product_detail"
+) {
   const queryClient = useQueryClient();
+  const { trackEvent } = useAnalytics();
 
   return useMutation({
     mutationFn: removeWishlistItem,
-    onSuccess: (_success, productId) => invalidateWishlistAndProducts(queryClient, productId)
+    onSuccess: (_success, productId) => {
+      trackEvent({
+        eventType: "product_unfavorited",
+        productId,
+        sourceScreen
+      });
+
+      return invalidateWishlistAndProducts(queryClient, productId);
+    }
   });
 }

@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { useAnalytics } from "@/hooks/useAnalytics";
 import {
   addProductToOutfit,
   createOutfit,
@@ -55,10 +56,30 @@ export function useOutfit(outfitId: string | undefined) {
 
 export function useCreateOutfit() {
   const queryClient = useQueryClient();
+  const { trackEvent } = useAnalytics();
 
   return useMutation({
     mutationFn: createOutfit,
-    onSuccess: async (outfit) => {
+    onSuccess: async (outfit, input) => {
+      trackEvent({
+        eventType: "outfit_created",
+        outfitId: outfit.id,
+        sourceScreen: "outfit_builder"
+      });
+      trackEvent({
+        eventType: "outfit_saved",
+        outfitId: outfit.id,
+        sourceScreen: "outfit_builder"
+      });
+      input.productIds?.forEach((productId) => {
+        trackEvent({
+          eventType: "product_added_to_outfit",
+          productId,
+          outfitId: outfit.id,
+          sourceScreen: "outfit_builder"
+        });
+      });
+
       queryClient.setQueryData(outfitQueryKeys.detail(outfit.id), outfit);
       await queryClient.invalidateQueries({ queryKey: outfitQueryKeys.lists() });
     }
@@ -91,10 +112,18 @@ export function useDeleteOutfit() {
 
 export function useAddProductToOutfit() {
   const queryClient = useQueryClient();
+  const { trackEvent } = useAnalytics();
 
   return useMutation({
     mutationFn: addProductToOutfit,
-    onSuccess: async (outfit) => {
+    onSuccess: async (outfit, input) => {
+      trackEvent({
+        eventType: "product_added_to_outfit",
+        productId: input.productId,
+        outfitId: outfit.id,
+        sourceScreen: "product_detail"
+      });
+
       queryClient.setQueryData(outfitQueryKeys.detail(outfit.id), outfit);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: outfitQueryKeys.lists() }),
@@ -106,10 +135,18 @@ export function useAddProductToOutfit() {
 
 export function useRemoveProductFromOutfit() {
   const queryClient = useQueryClient();
+  const { trackEvent } = useAnalytics();
 
   return useMutation({
     mutationFn: removeProductFromOutfit,
-    onSuccess: async (outfit) => {
+    onSuccess: async (outfit, input) => {
+      trackEvent({
+        eventType: "product_removed_from_outfit",
+        productId: input.productId,
+        outfitId: outfit.id,
+        sourceScreen: "outfit"
+      });
+
       queryClient.setQueryData(outfitQueryKeys.detail(outfit.id), outfit);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: outfitQueryKeys.lists() }),

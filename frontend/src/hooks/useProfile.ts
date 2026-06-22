@@ -22,13 +22,13 @@ export function useUpdateProfile() {
 
   return useMutation({
     mutationFn: updateProfile,
-    onSuccess: (profile) => {
+    onSuccess: async (profile) => {
       queryClient.setQueryData(profileQueryKeys.current(), profile);
 
       const session = useAuthStore.getState().session;
 
       if (session !== null) {
-        setSession({
+        await setSession({
           ...session,
           user: profile
         });
@@ -42,9 +42,9 @@ export function useLogout() {
   const router = useRouter();
   const clearSession = useAuthStore((state) => state.clearSession);
 
-  return () => {
+  return async () => {
     queryClient.clear();
-    clearSession();
+    await clearSession();
     router.replace("/sign-in");
   };
 }

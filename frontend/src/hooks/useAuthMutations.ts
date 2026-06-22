@@ -11,8 +11,8 @@ export function useLoginMutation() {
 
   return useMutation({
     mutationFn: (values: LoginFormValues) => login(values),
-    onSuccess: (session) => {
-      setSession(session);
+    onSuccess: async (session) => {
+      await setSession(session);
       router.replace("/(tabs)/products");
     }
   });
@@ -24,8 +24,8 @@ export function useRegisterMutation() {
 
   return useMutation({
     mutationFn: (values: RegisterFormValues) => register(values),
-    onSuccess: (session) => {
-      setSession(session);
+    onSuccess: async (session) => {
+      await setSession(session);
       router.replace("/(tabs)/products");
     }
   });

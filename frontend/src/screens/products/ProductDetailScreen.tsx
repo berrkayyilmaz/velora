@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AddToOutfitModal } from "@/components/outfits/AddToOutfitModal";
 import { ProductImage } from "@/components/products/ProductImage";
+import { useTrackProductView } from "@/hooks/useAnalytics";
 import { useProduct } from "@/hooks/useProducts";
 import { useRetailerRedirect } from "@/hooks/useRetailerRedirect";
 import { useAddWishlistItem, useRemoveWishlistItem } from "@/hooks/useWishlist";
@@ -30,6 +31,7 @@ export function ProductDetailScreen() {
   const params = useLocalSearchParams<{ productId?: string | string[] }>();
   const productId = Array.isArray(params.productId) ? params.productId[0] : params.productId;
   const productQuery = useProduct(productId);
+  useTrackProductView(productId, productQuery.data !== undefined);
   const addWishlistItem = useAddWishlistItem();
   const removeWishlistItem = useRemoveWishlistItem();
   const retailerRedirectMutation = useRetailerRedirect();
