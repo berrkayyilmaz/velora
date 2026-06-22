@@ -14,6 +14,7 @@ import {
   useRemoveProductFromOutfit,
   useUpdateOutfit
 } from "@/hooks/useOutfits";
+import { useRetailerRedirect } from "@/hooks/useRetailerRedirect";
 import {
   outfitNameFormSchema,
   type OutfitNameFormValues
@@ -29,6 +30,7 @@ export function OutfitDetailScreen() {
   const updateOutfitMutation = useUpdateOutfit();
   const deleteOutfitMutation = useDeleteOutfit();
   const removeProductMutation = useRemoveProductFromOutfit();
+  const retailerRedirectMutation = useRetailerRedirect();
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const { control, handleSubmit, reset } = useForm<OutfitNameFormValues>({
@@ -76,15 +78,32 @@ export function OutfitDetailScreen() {
     }
   };
 
+  const openRetailer = (productId: string) => {
+    if (outfitId !== undefined) {
+      retailerRedirectMutation.reset();
+      retailerRedirectMutation.mutate({
+        productId,
+        outfitId,
+        sourceScreen: "outfit"
+      });
+    }
+  };
+
   const renderProduct = ({ item }: { item: ProductSummary }) => (
     <OutfitProductRow
       isRemoving={
         removeProductMutation.isPending &&
         removeProductMutation.variables?.productId === item.id
       }
+      isOpeningRetailer={
+        retailerRedirectMutation.isPending &&
+        retailerRedirectMutation.variables?.productId === item.id
+      }
       onRemove={removeProduct}
+      onViewRetailer={openRetailer}
       product={item}
       removeDisabled={removeProductMutation.isPending}
+      retailerDisabled={retailerRedirectMutation.isPending}
     />
   );
 
@@ -250,6 +269,12 @@ export function OutfitDetailScreen() {
               {removeProductMutation.isError ? (
                 <Text className="text-sm text-red-700">
                   {getApiErrorMessage(removeProductMutation.error)}
+                </Text>
+              ) : null}
+
+              {retailerRedirectMutation.isError ? (
+                <Text className="text-sm text-red-700">
+                  {getApiErrorMessage(retailerRedirectMutation.error)}
                 </Text>
               ) : null}
 

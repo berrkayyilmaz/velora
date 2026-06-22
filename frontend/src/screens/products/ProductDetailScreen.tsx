@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AddToOutfitModal } from "@/components/outfits/AddToOutfitModal";
 import { ProductImage } from "@/components/products/ProductImage";
 import { useProduct } from "@/hooks/useProducts";
+import { useRetailerRedirect } from "@/hooks/useRetailerRedirect";
 import { useAddWishlistItem, useRemoveWishlistItem } from "@/hooks/useWishlist";
 import { getApiErrorMessage } from "@/utils/api-error";
 import { formatProductPrice } from "@/utils/price";
@@ -24,30 +25,6 @@ function DetailRow({ label, value }: DetailRowProps) {
   );
 }
 
-type PlaceholderActionProps = {
-  label: string;
-  primary?: boolean;
-};
-
-function PlaceholderAction({ label, primary = false }: PlaceholderActionProps) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: true }}
-      className={`h-12 items-center justify-center rounded-md border px-4 opacity-50 ${
-        primary
-          ? "border-neutral-950 bg-neutral-950"
-          : "border-neutral-300 bg-white"
-      }`}
-      disabled
-    >
-      <Text className={`font-semibold ${primary ? "text-white" : "text-neutral-900"}`}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 export function ProductDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ productId?: string | string[] }>();
@@ -55,6 +32,7 @@ export function ProductDetailScreen() {
   const productQuery = useProduct(productId);
   const addWishlistItem = useAddWishlistItem();
   const removeWishlistItem = useRemoveWishlistItem();
+  const retailerRedirectMutation = useRetailerRedirect();
   const [isOutfitModalVisible, setIsOutfitModalVisible] = useState(false);
   const wishlistMutation = productQuery.data?.isFavorited
     ? removeWishlistItem
@@ -146,12 +124,36 @@ export function ProductDetailScreen() {
               ) : null}
               <Pressable
                 accessibilityRole="button"
+                className="h-12 items-center justify-center rounded-md bg-neutral-950 px-4"
+                disabled={retailerRedirectMutation.isPending}
+                onPress={() => {
+                  if (productId !== undefined) {
+                    retailerRedirectMutation.reset();
+                    retailerRedirectMutation.mutate({
+                      productId,
+                      sourceScreen: "product_detail"
+                    });
+                  }
+                }}
+              >
+                <Text className="font-semibold text-white">
+                  {retailerRedirectMutation.isPending
+                    ? "Opening Retailer"
+                    : "View at Retailer"}
+                </Text>
+              </Pressable>
+              {retailerRedirectMutation.isError ? (
+                <Text className="text-center text-sm text-red-700">
+                  {getApiErrorMessage(retailerRedirectMutation.error)}
+                </Text>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
                 className="h-12 items-center justify-center rounded-md border border-neutral-300 bg-white px-4"
                 onPress={() => setIsOutfitModalVisible(true)}
               >
                 <Text className="font-semibold text-neutral-900">Add to Outfit</Text>
               </Pressable>
-              <PlaceholderAction label="View at Retailer" primary />
             </View>
           </View>
         </ScrollView>

@@ -8,15 +8,21 @@ import { formatProductPrice } from "@/utils/price";
 type OutfitProductRowProps = {
   product: ProductSummary;
   isRemoving: boolean;
+  isOpeningRetailer: boolean;
   removeDisabled: boolean;
+  retailerDisabled: boolean;
   onRemove: (productId: string) => void;
+  onViewRetailer: (productId: string) => void;
 };
 
 export function OutfitProductRow({
   product,
   isRemoving,
+  isOpeningRetailer,
   removeDisabled,
-  onRemove
+  retailerDisabled,
+  onRemove,
+  onViewRetailer
 }: OutfitProductRowProps) {
   const router = useRouter();
 
@@ -62,17 +68,30 @@ export function OutfitProductRow({
           </Text>
         </Pressable>
 
-        <Pressable
-          accessibilityLabel={`Remove ${product.title} from outfit`}
-          accessibilityRole="button"
-          className="h-10 self-start items-center justify-center rounded-md border border-neutral-300 px-4"
-          disabled={removeDisabled}
-          onPress={() => onRemove(product.id)}
-        >
-          <Text className="text-sm font-semibold text-neutral-900">
-            {isRemoving ? "Removing" : "Remove"}
-          </Text>
-        </Pressable>
+        <View className="flex-row gap-2">
+          <Pressable
+            accessibilityLabel={`View ${product.title} at retailer`}
+            accessibilityRole="button"
+            className="h-10 items-center justify-center rounded-md bg-neutral-950 px-3"
+            disabled={retailerDisabled}
+            onPress={() => onViewRetailer(product.id)}
+          >
+            <Text className="text-sm font-semibold text-white">
+              {isOpeningRetailer ? "Opening" : "Retailer"}
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel={`Remove ${product.title} from outfit`}
+            accessibilityRole="button"
+            className="h-10 items-center justify-center rounded-md border border-neutral-300 px-3"
+            disabled={removeDisabled}
+            onPress={() => onRemove(product.id)}
+          >
+            <Text className="text-sm font-semibold text-neutral-900">
+              {isRemoving ? "Removing" : "Remove"}
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
