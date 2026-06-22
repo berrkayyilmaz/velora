@@ -4,11 +4,11 @@ import type {
   ProductDetailResponse,
   ProductFilterOptions,
   ProductFilterOptionsResponse,
-  ProductFilters,
+  ProductListQuery,
   ProductListResponse
 } from "@/types/product";
 
-type ProductListRequest = ProductFilters & {
+type ProductListRequest = ProductListQuery & {
   page: number;
   pageSize: number;
 };

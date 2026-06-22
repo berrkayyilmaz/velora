@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  Text,
+  TextInput,
+  View
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProductCard } from "@/components/products/ProductCard";
@@ -13,6 +20,9 @@ export function ProductCatalogScreen() {
   const {
     filters,
     setFilters,
+    searchInput,
+    setSearchInput,
+    submitSearch,
     products,
     activeFilterCount,
     loadNextPage,
@@ -34,6 +44,21 @@ export function ProductCatalogScreen() {
             Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
           </Text>
         </Pressable>
+      </View>
+
+      <View className="border-b border-neutral-200 px-4 py-3">
+        <TextInput
+          accessibilityLabel="Search products"
+          autoCapitalize="none"
+          autoCorrect={false}
+          className="h-11 rounded-md border border-neutral-300 bg-white px-3 text-base text-neutral-950"
+          onChangeText={setSearchInput}
+          onSubmitEditing={submitSearch}
+          placeholder="Search products"
+          placeholderTextColor="#737373"
+          returnKeyType="search"
+          value={searchInput}
+        />
       </View>
 
       {productsQuery.isPending ? (
@@ -66,7 +91,7 @@ export function ProductCatalogScreen() {
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center px-6">
               <Text className="text-center text-base text-neutral-600">
-                No products match these filters.
+                No products match your search or filters.
               </Text>
             </View>
           }

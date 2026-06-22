@@ -5,25 +5,25 @@ import {
   getProductFilterOptions,
   getProducts
 } from "@/services/product.service";
-import type { ProductFilters } from "@/types/product";
+import type { ProductListQuery } from "@/types/product";
 
 const PRODUCT_PAGE_SIZE = 20;
 
 export const productQueryKeys = {
   all: ["products"] as const,
   lists: () => [...productQueryKeys.all, "list"] as const,
-  list: (filters: ProductFilters) => [...productQueryKeys.lists(), filters] as const,
+  list: (query: ProductListQuery) => [...productQueryKeys.lists(), query] as const,
   details: () => [...productQueryKeys.all, "detail"] as const,
   detail: (productId: string) => [...productQueryKeys.details(), productId] as const,
   filterOptions: () => [...productQueryKeys.all, "filter-options"] as const
 };
 
-export function useProducts(filters: ProductFilters) {
+export function useProducts(query: ProductListQuery) {
   return useInfiniteQuery({
-    queryKey: productQueryKeys.list(filters),
+    queryKey: productQueryKeys.list(query),
     queryFn: ({ pageParam }) =>
       getProducts({
-        ...filters,
+        ...query,
         page: pageParam,
         pageSize: PRODUCT_PAGE_SIZE
       }),

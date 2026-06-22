@@ -92,6 +92,7 @@ There is currently no automated frontend test suite.
 ### Product Discovery
 
 - Paginated product catalog
+- Debounced product search
 - Brand, category, retailer, color, and price filters
 - Product filter options loaded from the API
 - Product detail
@@ -175,7 +176,7 @@ src/
 - Logout is local only because the backend logout endpoint is not implemented.
 - Password reset is a placeholder and the backend reset endpoints are not
   implemented.
-- Product search and product sorting are not exposed in the catalog UI.
+- Product sorting is not exposed in the catalog UI.
 - Catalog cards do not provide direct favorite controls; favorite actions are on
   product detail.
 - Wishlist items cannot be added directly to an outfit; users must open product

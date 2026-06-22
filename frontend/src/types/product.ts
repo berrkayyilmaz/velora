@@ -34,6 +34,10 @@ export type ProductFilters = {
   maxPrice?: number;
 };
 
+export type ProductListQuery = ProductFilters & {
+  search?: string;
+};
+
 export type ProductFilterOptions = {
   brands: CatalogRecord[];
   categories: CatalogRecord[];

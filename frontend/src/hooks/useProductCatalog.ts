@@ -1,13 +1,25 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useProducts } from "@/hooks/useProducts";
 import type { ProductFilters } from "@/types/product";
 
+const SEARCH_DEBOUNCE_MS = 400;
+
 export function useProductCatalog() {
   const { trackEvent } = useAnalytics();
   const [filters, setCatalogFilters] = useState<ProductFilters>({});
-  const productsQuery = useProducts(filters);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const lastTrackedSearch = useRef("");
+  const productQuery = useMemo(
+    () => ({
+      ...filters,
+      ...(debouncedSearch === "" ? {} : { search: debouncedSearch })
+    }),
+    [debouncedSearch, filters]
+  );
+  const productsQuery = useProducts(productQuery);
   const products = useMemo(
     () => productsQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
     [productsQuery.data]
@@ -16,6 +28,31 @@ export function useProductCatalog() {
     () => Object.values(filters).filter((value) => value !== undefined).length,
     [filters]
   );
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchInput]);
+
+  useEffect(() => {
+    if (debouncedSearch === "") {
+      lastTrackedSearch.current = "";
+      return;
+    }
+
+    if (lastTrackedSearch.current === debouncedSearch) {
+      return;
+    }
+
+    lastTrackedSearch.current = debouncedSearch;
+    trackEvent({
+      eventType: "product_searched",
+      sourceScreen: "catalog"
+    });
+  }, [debouncedSearch, trackEvent]);
 
   const loadNextPage = useCallback(() => {
     if (productsQuery.hasNextPage && !productsQuery.isFetchingNextPage) {
@@ -37,9 +74,16 @@ export function useProductCatalog() {
     [trackEvent]
   );
 
+  const submitSearch = useCallback(() => {
+    setDebouncedSearch(searchInput.trim());
+  }, [searchInput]);
+
   return {
     filters,
     setFilters,
+    searchInput,
+    setSearchInput,
+    submitSearch,
     products,
     activeFilterCount,
     loadNextPage,
