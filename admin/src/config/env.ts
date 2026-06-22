@@ -5,13 +5,23 @@ function getApiBaseUrl(): string {
     throw new Error("VITE_API_BASE_URL is required.");
   }
 
-  const url = new URL(value);
+  const normalizedValue = value.replace(/\/$/, "");
+
+  if (normalizedValue.startsWith("/")) {
+    if (!normalizedValue.endsWith("/api/v1")) {
+      throw new Error("VITE_API_BASE_URL must include the /api/v1 base path.");
+    }
+
+    return normalizedValue;
+  }
+
+  const url = new URL(normalizedValue);
 
   if (!url.pathname.endsWith("/api/v1")) {
     throw new Error("VITE_API_BASE_URL must include the /api/v1 base path.");
   }
 
-  return value.replace(/\/$/, "");
+  return normalizedValue;
 }
 
 export const env = {

@@ -5,6 +5,7 @@ import type { AdminSession } from "@/types/admin-auth";
 export type AdminAuthContextValue = {
   session: AdminSession | null;
   isAuthenticated: boolean;
+  hasHydrated: boolean;
   setSession: (session: AdminSession) => void;
   clearSession: () => void;
 };

@@ -8,12 +8,13 @@ import { CategoriesScreen } from "@/screens/categories/CategoriesScreen";
 import { DashboardScreen } from "@/screens/dashboard/DashboardScreen";
 import { ProductsScreen } from "@/screens/products/ProductsScreen";
 import { SourcePlatformsScreen } from "@/screens/source-platforms/SourcePlatformsScreen";
+import { GuestRoute } from "@/routes/GuestRoute";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 
 export const router = createBrowserRouter([
   {
-    path: "/login",
-    element: <LoginScreen />
+    element: <GuestRoute />,
+    children: [{ path: "/login", element: <LoginScreen /> }]
   },
   {
     element: <ProtectedRoute />,
