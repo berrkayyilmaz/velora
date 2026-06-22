@@ -1,7 +1,9 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AddToOutfitModal } from "@/components/outfits/AddToOutfitModal";
 import { ProductImage } from "@/components/products/ProductImage";
 import { useProduct } from "@/hooks/useProducts";
 import { useAddWishlistItem, useRemoveWishlistItem } from "@/hooks/useWishlist";
@@ -53,6 +55,7 @@ export function ProductDetailScreen() {
   const productQuery = useProduct(productId);
   const addWishlistItem = useAddWishlistItem();
   const removeWishlistItem = useRemoveWishlistItem();
+  const [isOutfitModalVisible, setIsOutfitModalVisible] = useState(false);
   const wishlistMutation = productQuery.data?.isFavorited
     ? removeWishlistItem
     : addWishlistItem;
@@ -141,12 +144,27 @@ export function ProductDetailScreen() {
                   {getApiErrorMessage(wishlistMutation.error)}
                 </Text>
               ) : null}
-              <PlaceholderAction label="Add to Outfit" />
+              <Pressable
+                accessibilityRole="button"
+                className="h-12 items-center justify-center rounded-md border border-neutral-300 bg-white px-4"
+                onPress={() => setIsOutfitModalVisible(true)}
+              >
+                <Text className="font-semibold text-neutral-900">Add to Outfit</Text>
+              </Pressable>
               <PlaceholderAction label="View at Retailer" primary />
             </View>
           </View>
         </ScrollView>
       )}
+
+      {isOutfitModalVisible && productQuery.data !== undefined && productId !== undefined ? (
+        <AddToOutfitModal
+          onClose={() => setIsOutfitModalVisible(false)}
+          productId={productId}
+          productTitle={productQuery.data.title}
+          visible
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
