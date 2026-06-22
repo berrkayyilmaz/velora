@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProductImage } from "@/components/products/ProductImage";
 import { useProduct } from "@/hooks/useProducts";
+import { useAddWishlistItem, useRemoveWishlistItem } from "@/hooks/useWishlist";
 import { getApiErrorMessage } from "@/utils/api-error";
 import { formatProductPrice } from "@/utils/price";
 
@@ -50,6 +51,11 @@ export function ProductDetailScreen() {
   const params = useLocalSearchParams<{ productId?: string | string[] }>();
   const productId = Array.isArray(params.productId) ? params.productId[0] : params.productId;
   const productQuery = useProduct(productId);
+  const addWishlistItem = useAddWishlistItem();
+  const removeWishlistItem = useRemoveWishlistItem();
+  const wishlistMutation = productQuery.data?.isFavorited
+    ? removeWishlistItem
+    : addWishlistItem;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
@@ -112,7 +118,29 @@ export function ProductDetailScreen() {
             </View>
 
             <View className="gap-3">
-              <PlaceholderAction label="Add to Wishlist" />
+              <Pressable
+                accessibilityRole="button"
+                className="h-12 items-center justify-center rounded-md border border-neutral-300 bg-white px-4"
+                disabled={wishlistMutation.isPending}
+                onPress={() => {
+                  if (productId !== undefined) {
+                    wishlistMutation.mutate(productId);
+                  }
+                }}
+              >
+                <Text className="font-semibold text-neutral-900">
+                  {wishlistMutation.isPending
+                    ? "Updating Wishlist"
+                    : productQuery.data.isFavorited
+                      ? "Remove from Wishlist"
+                      : "Add to Wishlist"}
+                </Text>
+              </Pressable>
+              {wishlistMutation.isError ? (
+                <Text className="text-center text-sm text-red-700">
+                  {getApiErrorMessage(wishlistMutation.error)}
+                </Text>
+              ) : null}
               <PlaceholderAction label="Add to Outfit" />
               <PlaceholderAction label="View at Retailer" primary />
             </View>
