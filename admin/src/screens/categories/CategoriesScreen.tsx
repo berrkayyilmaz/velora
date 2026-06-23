@@ -1,5 +1,7 @@
-import { ScreenPlaceholder } from "@/components/ScreenPlaceholder";
+import { CatalogManagementScreen } from "@/components/catalog/CatalogManagementScreen";
 
 export function CategoriesScreen() {
-  return <ScreenPlaceholder title="Categories" />;
+  return (
+    <CatalogManagementScreen resource="categories" singularLabel="Category" title="Categories" />
+  );
 }

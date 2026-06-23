@@ -1,5 +1,5 @@
-import { ScreenPlaceholder } from "@/components/ScreenPlaceholder";
+import { CatalogManagementScreen } from "@/components/catalog/CatalogManagementScreen";
 
 export function BrandsScreen() {
-  return <ScreenPlaceholder title="Brands" />;
+  return <CatalogManagementScreen resource="brands" singularLabel="Brand" title="Brands" />;
 }

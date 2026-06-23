@@ -1,5 +1,12 @@
-import { ScreenPlaceholder } from "@/components/ScreenPlaceholder";
+import { CatalogManagementScreen } from "@/components/catalog/CatalogManagementScreen";
 
 export function SourcePlatformsScreen() {
-  return <ScreenPlaceholder title="Source Platforms" />;
+  return (
+    <CatalogManagementScreen
+      resource="source-platforms"
+      singularLabel="Source Platform"
+      supportsBaseUrl
+      title="Source Platforms"
+    />
+  );
 }
