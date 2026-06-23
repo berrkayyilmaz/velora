@@ -1,6 +1,7 @@
 import type { FastifyPluginCallback, FastifyReply } from "fastify";
 import type { ZodError } from "zod";
 
+import { authRateLimitConfig } from "../config/security.js";
 import {
   authSessionResponseSchema,
   loginRequestSchema,
@@ -32,7 +33,7 @@ function sendAuthError(reply: FastifyReply, error: unknown): FastifyReply {
 }
 
 const authRoutes: FastifyPluginCallback = (app, _options, done) => {
-  app.post("/register", async (request, reply) => {
+  app.post("/register", { config: { rateLimit: authRateLimitConfig } }, async (request, reply) => {
     const parsedBody = registerRequestSchema.safeParse(request.body);
 
     if (!parsedBody.success) {
@@ -49,7 +50,7 @@ const authRoutes: FastifyPluginCallback = (app, _options, done) => {
     }
   });
 
-  app.post("/login", async (request, reply) => {
+  app.post("/login", { config: { rateLimit: authRateLimitConfig } }, async (request, reply) => {
     const parsedBody = loginRequestSchema.safeParse(request.body);
 
     if (!parsedBody.success) {

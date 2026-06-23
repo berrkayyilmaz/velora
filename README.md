@@ -135,6 +135,9 @@ Default local endpoints:
 | `DATABASE_URL`                | Prisma PostgreSQL connection               | `postgresql://velora:velora_password@localhost:5432/velora?schema=public` |
 | `JWT_SECRET`                  | User and admin access-token signing secret | Local random value, minimum 32 characters                                 |
 | `JWT_ACCESS_TOKEN_EXPIRES_IN` | Access-token lifetime                      | `1h`                                                                      |
+| `CORS_ALLOWED_ORIGINS`        | Comma-separated browser origin allowlist   | `http://localhost:5173,http://localhost:8081`                             |
+| `AUTH_RATE_LIMIT_MAX`         | Requests allowed per auth route/IP/window  | `10`                                                                      |
+| `AUTH_RATE_LIMIT_WINDOW_MS`   | Auth throttling window in milliseconds     | `60000`                                                                   |
 
 ### Mobile
 
@@ -142,9 +145,13 @@ Default local endpoints:
 | -------------------------- | --------------------- | ------------------------------ |
 | `EXPO_PUBLIC_API_BASE_URL` | Versioned backend URL | `http://localhost:4000/api/v1` |
 
-Use `http://10.0.2.2:4000/api/v1` for the standard Android emulator. A physical
-device must use the development machine's LAN IP, and the backend must bind to
-`0.0.0.0`.
+Use `http://10.0.2.2:4000/api/v1` for the standard Android emulator. The iOS
+simulator on macOS can use `http://localhost:4000/api/v1`. A physical device
+must use `http://<development-machine-lan-ip>:4000/api/v1`; run `ipconfig` on
+Windows to find the active adapter's IPv4 address. The backend must bind to
+`0.0.0.0`, both devices must share a network, and port `4000` must be allowed
+through the local firewall. Restart Expo with `npm.cmd run start -- --clear`
+after changing this value.
 
 ### Admin
 
@@ -154,8 +161,8 @@ device must use the development machine's LAN IP, and the backend must bind to
 
 Vite proxies `/api` to `http://localhost:4000` during development. A production
 admin deployment using the relative value must provide an equivalent same-origin
-reverse proxy. A separate API origin requires explicit backend CORS support,
-which is not currently configured.
+reverse proxy. A separately hosted admin origin must be included in the backend
+`CORS_ALLOWED_ORIGINS` value.
 
 ## Backend Commands
 
@@ -242,9 +249,10 @@ release builds.
 - User and admin logout are local token removal only; the API logout endpoints
   in `API_SPEC.md` are not implemented. There is no refresh-token or token
   revocation flow.
-- Authentication endpoints have no rate limiting or dedicated abuse protection.
-  A deleted admin's existing JWT remains valid until expiration because admin
-  existence is not rechecked by middleware.
+- Authentication endpoints have basic in-memory, per-IP rate limiting. It is
+  process-local and must be supplemented by edge or distributed protection for
+  multi-instance production deployment. A deleted admin's existing JWT remains
+  valid until expiration because admin existence is not rechecked by middleware.
 - Analytics does not yet emit the approved registration, login, logout, password
   reset, outfit edit, or outfit delete events. Redirect events and analytics
   events are separate client requests.
@@ -261,8 +269,10 @@ release builds.
   but are not displayed in the mobile product detail screen.
 - Seed products use placeholder images and example retailer URLs. Real approved
   retailer data required for pre-launch shopping validation has not been added.
-- Backend CORS, production reverse-proxy configuration, deployment automation,
-  CI, centralized monitoring, and external error reporting are not configured.
+- Backend CORS uses an explicit environment allowlist. Production reverse-proxy
+  configuration, deployment automation, CI, centralized monitoring, and external
+  error reporting are not configured. The shared error handler logs only through
+  the Fastify logger.
 - There are no automated backend, mobile, or admin tests. Native iOS/Android
   release builds and physical-device acceptance tests were not run in this audit.
 - Frontend and admin API responses rely on static TypeScript types and are not

@@ -1,7 +1,10 @@
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { env } from "./config/env.js";
+import corsPlugin from "./plugins/cors.js";
+import errorHandlerPlugin from "./plugins/error-handler.js";
 import prismaPlugin from "./plugins/prisma.js";
+import rateLimitPlugin from "./plugins/rate-limit.js";
 import adminAnalyticsRoutes from "./routes/admin-analytics.routes.js";
 import adminCatalogRoutes from "./routes/admin-catalog.routes.js";
 import adminProductRoutes from "./routes/admin-product.routes.js";
@@ -22,6 +25,9 @@ export function buildApp(): FastifyInstance {
     logger: env.NODE_ENV !== "test"
   });
 
+  app.register(errorHandlerPlugin);
+  app.register(corsPlugin);
+  app.register(rateLimitPlugin);
   app.register(prismaPlugin);
   app.register(healthRoutes, { prefix: "/health" });
   app.register(healthRoutes, { prefix: `${API_PREFIX}/health` });

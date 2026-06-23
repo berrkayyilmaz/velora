@@ -72,6 +72,9 @@ Variables:
 | `DATABASE_URL`                | PostgreSQL connection string used by Prisma.                       | `postgresql://velora:velora_password@localhost:5432/velora?schema=public` |
 | `JWT_SECRET`                  | Secret used to sign access tokens. Must be at least 32 characters. | `replace-with-a-local-development-secret-at-least-32-characters`          |
 | `JWT_ACCESS_TOKEN_EXPIRES_IN` | Access token expiration passed to JWT signing.                     | `1h`                                                                      |
+| `CORS_ALLOWED_ORIGINS`        | Comma-separated browser origins allowed to call the API.           | `http://localhost:5173,http://localhost:8081`                             |
+| `AUTH_RATE_LIMIT_MAX`         | Maximum requests per auth endpoint, per IP and window.             | `10`                                                                      |
+| `AUTH_RATE_LIMIT_WINDOW_MS`   | Auth rate-limit window in milliseconds.                            | `60000`                                                                   |
 
 `backend/.env` is gitignored.
 
@@ -229,5 +232,13 @@ entire batch when one row is invalid.
 
 - User routes require user JWTs unless they are public auth routes.
 - Admin routes require admin JWTs and reject normal user tokens.
+- CORS uses the explicit `CORS_ALLOWED_ORIGINS` allowlist. Native mobile HTTP
+  requests are not governed by browser CORS, but Expo web and separately hosted
+  admin deployments must use an allowed origin.
+- Registration, user login, and admin login are limited per route and client IP.
+  The MVP limiter is in-memory and process-local.
+- Unexpected backend errors are logged and returned with a safe common error
+  envelope. Route validation and known service errors retain their specific
+  error codes.
 - Product deletion is implemented as soft deletion by setting `isActive` to `false`.
 - Seed data uses safe placeholder images and example retailer URLs.

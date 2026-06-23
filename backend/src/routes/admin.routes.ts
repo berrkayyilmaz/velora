@@ -1,6 +1,7 @@
 import type { FastifyPluginCallback, FastifyReply, FastifyRequest } from "fastify";
 import type { ZodError } from "zod";
 
+import { authRateLimitConfig } from "../config/security.js";
 import { requireAdminAuth } from "../middleware/admin-auth.middleware.js";
 import {
   adminLoginRequestSchema,
@@ -45,22 +46,26 @@ function getAuthenticatedAdminId(request: FastifyRequest): string {
 }
 
 const adminRoutes: FastifyPluginCallback = (app, _options, done) => {
-  app.post("/auth/login", async (request, reply) => {
-    const parsedBody = adminLoginRequestSchema.safeParse(request.body);
+  app.post(
+    "/auth/login",
+    { config: { rateLimit: authRateLimitConfig } },
+    async (request, reply) => {
+      const parsedBody = adminLoginRequestSchema.safeParse(request.body);
 
-    if (!parsedBody.success) {
-      return sendValidationError(reply, parsedBody.error);
+      if (!parsedBody.success) {
+        return sendValidationError(reply, parsedBody.error);
+      }
+
+      try {
+        const session = await loginAdmin(app.prisma, parsedBody.data);
+        const response = adminSessionResponseSchema.parse({ data: session });
+
+        return reply.status(200).send(response);
+      } catch (error) {
+        return sendAdminAuthError(reply, error);
+      }
     }
-
-    try {
-      const session = await loginAdmin(app.prisma, parsedBody.data);
-      const response = adminSessionResponseSchema.parse({ data: session });
-
-      return reply.status(200).send(response);
-    } catch (error) {
-      return sendAdminAuthError(reply, error);
-    }
-  });
+  );
 
   app.get("/me", { preHandler: requireAdminAuth }, async (request, reply) => {
     try {

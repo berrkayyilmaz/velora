@@ -46,12 +46,27 @@ The value must include `/api/v1`. It is validated when the application starts.
 
 Platform-specific local API addresses:
 
-- iOS simulator: `http://localhost:4000/api/v1`
-- Android emulator: `http://10.0.2.2:4000/api/v1`
-- Physical device: `http://<development-machine-lan-ip>:4000/api/v1`
+| Target | `EXPO_PUBLIC_API_BASE_URL` |
+| --- | --- |
+| iOS simulator on macOS | `http://localhost:4000/api/v1` |
+| Android Studio emulator | `http://10.0.2.2:4000/api/v1` |
+| Physical iOS or Android device | `http://<development-machine-lan-ip>:4000/api/v1` |
+| Expo web | `http://localhost:4000/api/v1` |
 
-The backend must listen on `0.0.0.0` for physical-device access, and the device
-and development machine must be on the same network.
+For a physical device, run `ipconfig` on Windows and use the active network
+adapter's IPv4 address. The backend must listen on `0.0.0.0`, the device and
+development machine must be on the same network, and the local firewall must
+allow inbound traffic to port `4000`. Confirm connectivity from the device by
+opening `http://<development-machine-lan-ip>:4000/health` in its browser.
+
+After changing `frontend/.env`, restart Expo with a cleared cache:
+
+```powershell
+npm.cmd run start -- --clear
+```
+
+Native mobile requests are not subject to browser CORS. Expo web origins must be
+included in the backend `CORS_ALLOWED_ORIGINS` value.
 
 Authenticated sessions are stored with Expo SecureStore on supported native
 platforms. Expo web uses browser local storage for development compatibility.
@@ -185,8 +200,8 @@ src/
 - Product descriptions, available colors, and tags are not displayed.
 - The internal admin web panel described by the PRD is not implemented in this
   frontend.
-- Expo web starts and bundles, but authenticated cross-origin API calls require
-  backend CORS configuration, which is not currently present.
+- Expo web cross-origin API calls only work when the web origin is included in
+  the backend `CORS_ALLOWED_ORIGINS` value.
 - API responses use static TypeScript types but are not runtime-validated with
   Zod.
 - Retailer links are opened after an asynchronous API request; browser popup
