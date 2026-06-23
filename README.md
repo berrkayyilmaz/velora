@@ -217,6 +217,7 @@ npm.cmd run preview
 - Retailer redirect recording followed by external URL opening
 - PostgreSQL analytics-event storage and admin event/redirect review
 - Separate admin authentication and persisted admin session
+- Global admin navigation, administrator identity display, and local logout
 - Admin analytics summary, paginated event and redirect lists
 - Admin product list, create, edit, and soft deactivation
 - Admin brand, category, and source-platform list, create, and edit
@@ -251,9 +252,8 @@ release builds.
 - Product list sorting and `meta.appliedFilters`, analytics metadata, health
   response shape, and admin analytics summary shape do not fully match the
   current API specification.
-- Admin product import, product search/filter UI, global navigation, and admin
-  logout UI are not implemented. Catalog delete endpoints documented in the API
-  specification are also absent.
+- Admin product import and product search/filter UI are not implemented. Catalog
+  delete endpoints documented in the API specification are also absent.
 - The mobile wishlist does not add products directly to outfits; users must open
   product detail first. Wishlist/outfit sorting controls are not exposed.
 - Product descriptions, available colors, and tags are returned by the backend
