@@ -2,6 +2,9 @@ import { adminApiClient } from "@/services/api/client";
 import type {
   AdminProduct,
   AdminProductDetailResponse,
+  AdminProductImportInput,
+  AdminProductImportResponse,
+  AdminProductImportSummary,
   AdminProductInput,
   AdminProductListInput,
   AdminProductListResponse,
@@ -55,4 +58,15 @@ export async function deactivateAdminProduct(
   );
 
   return response.data;
+}
+
+export async function importAdminProducts(
+  input: AdminProductImportInput
+): Promise<AdminProductImportSummary> {
+  const response = await adminApiClient.post<AdminProductImportResponse>(
+    "/admin/products/import",
+    input
+  );
+
+  return response.data.data;
 }

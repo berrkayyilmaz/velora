@@ -73,3 +73,22 @@ export type DeleteAdminProductResponse = {
     deactivated: boolean;
   };
 };
+
+export type AdminProductImportInput = {
+  products: unknown[];
+};
+
+export type AdminProductImportFailure = {
+  row: number;
+  reason: string;
+};
+
+export type AdminProductImportSummary = {
+  createdCount: number;
+  skippedCount: number;
+  failedRows: AdminProductImportFailure[];
+};
+
+export type AdminProductImportResponse = {
+  data: AdminProductImportSummary;
+};

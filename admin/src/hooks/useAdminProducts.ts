@@ -5,9 +5,14 @@ import {
   deactivateAdminProduct,
   getAdminProduct,
   getAdminProducts,
+  importAdminProducts,
   updateAdminProduct
 } from "@/services/admin-product.service";
-import type { AdminProductInput, UpdateAdminProductInput } from "@/types/admin-product";
+import type {
+  AdminProductImportInput,
+  AdminProductInput,
+  UpdateAdminProductInput
+} from "@/types/admin-product";
 
 const ADMIN_PRODUCTS_PAGE_SIZE = 20;
 
@@ -62,6 +67,17 @@ export function useDeactivateAdminProduct() {
 
   return useMutation({
     mutationFn: (productId: string) => deactivateAdminProduct(productId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: adminProductQueryKeys.all });
+    }
+  });
+}
+
+export function useImportAdminProducts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: AdminProductImportInput) => importAdminProducts(input),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: adminProductQueryKeys.all });
     }

@@ -200,10 +200,12 @@ Not implemented yet:
 - `GET /api/v1/admin/products/:id`
 - `PATCH /api/v1/admin/products/:id`
 - `DELETE /api/v1/admin/products/:id`
+- `POST /api/v1/admin/products/import`
 
-Not implemented yet:
-
-- `POST /api/v1/admin/products/imports`
+The import endpoint accepts a JSON body with a `products` array of 1-100 rows.
+Each row may reference its brand, category, and source platform by ID or slug.
+The response reports created, skipped, and failed rows without failing the
+entire batch when one row is invalid.
 
 ### Admin Catalog Management
 

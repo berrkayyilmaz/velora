@@ -4,6 +4,8 @@ import type { ZodError } from "zod";
 import { requireAdminAuth } from "../middleware/admin-auth.middleware.js";
 import {
   adminProductDetailResponseSchema,
+  adminProductImportRequestSchema,
+  adminProductImportResponseSchema,
   adminProductListQuerySchema,
   adminProductListResponseSchema,
   adminProductParamsSchema,
@@ -16,6 +18,7 @@ import {
   createAdminProduct,
   deleteAdminProduct,
   getAdminProduct,
+  importAdminProducts,
   listAdminProducts,
   updateAdminProduct
 } from "../services/admin-product.service.js";
@@ -75,6 +78,23 @@ const adminProductRoutes: FastifyPluginCallback = (app, _options, done) => {
       const response = adminProductDetailResponseSchema.parse({ data: product });
 
       return reply.status(201).send(response);
+    } catch (error) {
+      return sendAdminProductError(reply, error);
+    }
+  });
+
+  app.post("/import", async (request, reply) => {
+    const parsedBody = adminProductImportRequestSchema.safeParse(request.body);
+
+    if (!parsedBody.success) {
+      return sendValidationError(reply, parsedBody.error);
+    }
+
+    try {
+      const result = await importAdminProducts(app.prisma, parsedBody.data);
+      const response = adminProductImportResponseSchema.parse(result);
+
+      return reply.status(200).send(response);
     } catch (error) {
       return sendAdminProductError(reply, error);
     }

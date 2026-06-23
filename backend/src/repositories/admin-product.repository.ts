@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 
 import type {
+  AdminProductImportRow,
   AdminProductListQuery,
   CreateAdminProductRequest,
   UpdateAdminProductRequest
@@ -126,6 +127,48 @@ export async function createAdminProduct(
   });
 }
 
+export async function findExistingAdminProductForImport(
+  prisma: PrismaClient,
+  input: Pick<AdminProductImportRow, "id" | "productUrl">
+): Promise<{ id: string } | null> {
+  const matches: Prisma.ProductWhereInput[] = [{ productUrl: input.productUrl }];
+
+  if (input.id !== undefined) {
+    matches.push({ id: input.id });
+  }
+
+  return prisma.product.findFirst({
+    where: {
+      OR: matches
+    },
+    select: { id: true }
+  });
+}
+
+export async function createImportedAdminProduct(
+  prisma: PrismaClient,
+  input: CreateAdminProductRequest & { id?: string }
+): Promise<AdminProductRecord> {
+  return prisma.product.create({
+    data: {
+      ...(input.id === undefined ? {} : { id: input.id }),
+      title: input.title,
+      brandId: input.brandId,
+      categoryId: input.categoryId,
+      sourcePlatformId: input.sourcePlatformId,
+      price: input.price,
+      imageUrl: input.imageUrl,
+      productUrl: input.productUrl,
+      color: input.color,
+      ...(input.description === undefined ? {} : { description: input.description }),
+      ...(input.availableColors === undefined ? {} : { availableColors: input.availableColors }),
+      ...(input.tags === undefined ? {} : { tags: input.tags }),
+      ...(input.isActive === undefined ? {} : { isActive: input.isActive })
+    },
+    select: adminProductSelect
+  });
+}
+
 export async function updateAdminProduct(
   prisma: PrismaClient,
   productId: string,
@@ -174,6 +217,16 @@ export async function findBrandForAdminProduct(
   });
 }
 
+export async function findBrandForAdminProductBySlug(
+  prisma: PrismaClient,
+  brandSlug: string
+): Promise<{ id: string } | null> {
+  return prisma.brand.findUnique({
+    where: { slug: brandSlug },
+    select: { id: true }
+  });
+}
+
 export async function findCategoryForAdminProduct(
   prisma: PrismaClient,
   categoryId: string
@@ -184,12 +237,32 @@ export async function findCategoryForAdminProduct(
   });
 }
 
+export async function findCategoryForAdminProductBySlug(
+  prisma: PrismaClient,
+  categorySlug: string
+): Promise<{ id: string } | null> {
+  return prisma.category.findUnique({
+    where: { slug: categorySlug },
+    select: { id: true }
+  });
+}
+
 export async function findSourcePlatformForAdminProduct(
   prisma: PrismaClient,
   sourcePlatformId: string
 ): Promise<{ id: string } | null> {
   return prisma.sourcePlatform.findUnique({
     where: { id: sourcePlatformId },
+    select: { id: true }
+  });
+}
+
+export async function findSourcePlatformForAdminProductBySlug(
+  prisma: PrismaClient,
+  sourcePlatformSlug: string
+): Promise<{ id: string } | null> {
+  return prisma.sourcePlatform.findUnique({
+    where: { slug: sourcePlatformSlug },
     select: { id: true }
   });
 }

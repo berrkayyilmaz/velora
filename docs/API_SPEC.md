@@ -296,7 +296,7 @@ Approved MVP `eventType` values:
 | POST | `/api/v1/admin/products` | Create product. | Admin auth | Body: `title`, `brandId`, `categoryId`, `sourcePlatformId`, `price`, `imageUrl`, `productUrl`, `color`, optional `description`, optional `availableColors`, optional `tags`, optional `isActive`. | `data` is admin product detail. | Required fields must be present. Relationship IDs must exist. Price must be non-negative. URLs must be valid. | Product data should pass the same validation used for imports. |
 | PATCH | `/api/v1/admin/products/:productId` | Update product. | Admin auth | Path: `productId`; body may include any editable product field. | `data` is admin product detail. | Product must exist. Relationship IDs must exist when provided. Price must be non-negative. URLs must be valid when provided. | Use `isActive` to hide products without breaking historical wishlist, outfit, analytics, or redirect references. |
 | DELETE | `/api/v1/admin/products/:productId` | Delete or deactivate product. | Admin auth | Path: `productId`. | `data.success`; optional `data.deactivated`. | Product must exist. | MVP may prefer deactivation when product has historical references. No checkout/order impact exists in MVP. |
-| POST | `/api/v1/admin/products/imports` | Import products from structured CSV or JSON. | Admin auth | Body or multipart form: `format` as `csv` or `json`, product file or structured product list, optional `dryRun`. | `data.importId` optional, `data.createdCount`, `data.updatedCount`, `data.skippedCount`, `data.errors`. | Format must be supported. Each product row/item must satisfy product validation. Relationship values must map to existing or approved catalog records. | Supports seed data maintenance and pre-launch catalog updates. No scraping or broad marketplace integration implied. |
+| POST | `/api/v1/admin/products/import` | Import products from structured JSON. | Admin auth | Body: `products`, an array of 1-100 product rows. Each row uses the product create fields and exactly one ID or slug for each of brand, category, and source platform. Optional `id` supports repeatable imports. | `data.createdCount`, `data.skippedCount`, `data.failedRows`; each failed row includes its one-based `row` and `reason`. | Every row is validated independently. Catalog references must resolve to existing records. Existing product IDs or product URLs are skipped. | Creates valid new products without updating existing products. Invalid rows do not abort valid rows. No scraping or broad marketplace integration implied. |
 
 Admin product detail shape:
 
@@ -440,4 +440,3 @@ The API must not include MVP endpoints for:
 - Revenue reporting
 - Affiliate management tools
 - Public web app APIs
-

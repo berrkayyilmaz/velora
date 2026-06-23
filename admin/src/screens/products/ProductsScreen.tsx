@@ -1,8 +1,9 @@
-import { Archive, Pencil, Plus } from "lucide-react";
+import { Archive, Pencil, Plus, Upload } from "lucide-react";
 import { useState } from "react";
 
 import { PaginationControls } from "@/components/PaginationControls";
 import { ProductForm } from "@/components/products/ProductForm";
+import { ProductImportPanel } from "@/components/products/ProductImportPanel";
 import {
   useAdminProduct,
   useAdminProducts,
@@ -64,6 +65,7 @@ export function ProductsScreen() {
   const [page, setPage] = useState(1);
   const [formMode, setFormMode] = useState<"create" | "edit" | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [isImportVisible, setIsImportVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const productsQuery = useAdminProducts(page);
   const productQuery = useAdminProduct(editingProductId);
@@ -80,6 +82,7 @@ export function ProductsScreen() {
 
   const openCreateForm = () => {
     setSuccessMessage(null);
+    setIsImportVisible(false);
     setEditingProductId(null);
     setFormMode("create");
     createMutation.reset();
@@ -87,9 +90,16 @@ export function ProductsScreen() {
 
   const openEditForm = (productId: string) => {
     setSuccessMessage(null);
+    setIsImportVisible(false);
     setEditingProductId(productId);
     setFormMode("edit");
     updateMutation.reset();
+  };
+
+  const openImportPanel = () => {
+    setSuccessMessage(null);
+    closeForm();
+    setIsImportVisible(true);
   };
 
   const submitCreate = async (product: AdminProductInput) => {
@@ -139,14 +149,24 @@ export function ProductsScreen() {
     <main className="mx-auto w-full max-w-7xl p-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Products</h1>
-        <button
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          onClick={openCreateForm}
-          type="button"
-        >
-          <Plus aria-hidden="true" size={17} />
-          Create Product
-        </button>
+        <div className="flex gap-3">
+          <button
+            className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium"
+            onClick={openImportPanel}
+            type="button"
+          >
+            <Upload aria-hidden="true" size={17} />
+            Import JSON
+          </button>
+          <button
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            onClick={openCreateForm}
+            type="button"
+          >
+            <Plus aria-hidden="true" size={17} />
+            Create Product
+          </button>
+        </div>
       </div>
 
       {successMessage === null ? null : (
@@ -159,6 +179,10 @@ export function ProductsScreen() {
         <p className="mt-5 text-destructive" role="alert">
           {getApiErrorMessage(deactivateMutation.error)}
         </p>
+      ) : null}
+
+      {isImportVisible ? (
+        <ProductImportPanel onClose={() => setIsImportVisible(false)} />
       ) : null}
 
       {formMode === null ? null : (
