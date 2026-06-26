@@ -1,29 +1,67 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 
+import { useAdminCatalogReferenceRecords } from "@/hooks/useAdminCatalog";
 import { useImportAdminProducts } from "@/hooks/useAdminProducts";
+import type { AdminCatalogListRecord } from "@/types/admin-catalog";
 import { getApiErrorMessage } from "@/utils/api-error";
 
 type ProductImportPanelProps = {
   onClose: () => void;
 };
 
-const exampleProducts = JSON.stringify(
-  [
-    {
-      title: "Essential Cotton Shirt",
-      brandSlug: "solenne",
-      categorySlug: "tops",
-      sourcePlatformSlug: "velora-demo-retail",
-      price: 79.9,
-      imageUrl: "https://placehold.co/800x1000/png?text=Product",
-      productUrl: "https://example.com/products/essential-cotton-shirt",
-      color: "White",
-      isActive: true
-    }
-  ],
-  null,
-  2
-);
+type ExampleSlugs = {
+  brandSlug: string | null;
+  categorySlug: string | null;
+  sourcePlatformSlug: string | null;
+};
+
+type ReadyExampleSlugs = {
+  brandSlug: string;
+  categorySlug: string;
+  sourcePlatformSlug: string;
+};
+
+const fallbackExampleProducts = buildExampleProducts({
+  brandSlug: "existing-brand-slug",
+  categorySlug: "existing-category-slug",
+  sourcePlatformSlug: "existing-source-platform-slug"
+});
+
+function buildExampleProducts({
+  brandSlug,
+  categorySlug,
+  sourcePlatformSlug
+}: ReadyExampleSlugs) {
+  return JSON.stringify(
+    [
+      {
+        title: "Essential Cotton Shirt",
+        brandSlug,
+        categorySlug,
+        sourcePlatformSlug,
+        price: 79.9,
+        imageUrl: "https://placehold.co/800x1000/png?text=Product",
+        productUrl: "https://example.com/products/essential-cotton-shirt",
+        color: "White",
+        isActive: true
+      }
+    ],
+    null,
+    2
+  );
+}
+
+function getFirstSlug(records: AdminCatalogListRecord[]): string | null {
+  return records[0]?.slug ?? null;
+}
+
+function isExampleReady(slugs: ExampleSlugs): slugs is ReadyExampleSlugs {
+  return (
+    slugs.brandSlug !== null &&
+    slugs.categorySlug !== null &&
+    slugs.sourcePlatformSlug !== null
+  );
+}
 
 function getProductsFromJson(value: string): unknown[] {
   const parsed: unknown = JSON.parse(value);
@@ -44,10 +82,83 @@ function getProductsFromJson(value: string): unknown[] {
   throw new Error("Expected a JSON array or an object with a products array.");
 }
 
+function SlugReferenceList({
+  error,
+  isError,
+  isLoading,
+  records,
+  title
+}: {
+  error: unknown;
+  isError: boolean;
+  isLoading: boolean;
+  records: AdminCatalogListRecord[];
+  title: string;
+}) {
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-3">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      {isLoading ? (
+        <p className="mt-2 text-sm text-muted-foreground">Loading slugs...</p>
+      ) : isError ? (
+        <p className="mt-2 text-sm text-destructive">{getApiErrorMessage(error)}</p>
+      ) : records.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">No records available.</p>
+      ) : (
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {records.map((record) => (
+            <li
+              className="rounded-md border border-border bg-background px-2 py-1 font-mono text-xs"
+              key={record.id}
+              title={record.name}
+            >
+              {record.slug}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function ProductImportPanel({ onClose }: ProductImportPanelProps) {
-  const [json, setJson] = useState(exampleProducts);
+  const brandsQuery = useAdminCatalogReferenceRecords("brands");
+  const categoriesQuery = useAdminCatalogReferenceRecords("categories");
+  const sourcePlatformsQuery = useAdminCatalogReferenceRecords("source-platforms");
+  const brands = useMemo(() => brandsQuery.data?.data.items ?? [], [brandsQuery.data]);
+  const categories = useMemo(
+    () => categoriesQuery.data?.data.items ?? [],
+    [categoriesQuery.data]
+  );
+  const sourcePlatforms = useMemo(
+    () => sourcePlatformsQuery.data?.data.items ?? [],
+    [sourcePlatformsQuery.data]
+  );
+  const exampleSlugs = useMemo<ExampleSlugs>(
+    () => ({
+      brandSlug: getFirstSlug(brands),
+      categorySlug: getFirstSlug(categories),
+      sourcePlatformSlug: getFirstSlug(sourcePlatforms)
+    }),
+    [brands, categories, sourcePlatforms]
+  );
+  const exampleProducts = useMemo(() => {
+    if (!isExampleReady(exampleSlugs)) {
+      return fallbackExampleProducts;
+    }
+
+    return buildExampleProducts(exampleSlugs);
+  }, [exampleSlugs]);
+  const [customJson, setCustomJson] = useState<string | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const importMutation = useImportAdminProducts();
+  const json = customJson ?? exampleProducts;
+
+  const useExampleJson = () => {
+    setCustomJson(null);
+    setParseError(null);
+    importMutation.reset();
+  };
 
   const submitImport = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -67,7 +178,8 @@ export function ProductImportPanel({ onClose }: ProductImportPanelProps) {
     }
   };
 
-  const error = parseError ?? (importMutation.isError ? getApiErrorMessage(importMutation.error) : null);
+  const error =
+    parseError ?? (importMutation.isError ? getApiErrorMessage(importMutation.error) : null);
 
   return (
     <section aria-labelledby="product-import-heading" className="mt-6 border-y border-border py-6">
@@ -75,45 +187,98 @@ export function ProductImportPanel({ onClose }: ProductImportPanelProps) {
         Import Products
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Paste a JSON array of up to 100 products. Catalog references accept either an ID or slug.
+        Paste a JSON array of up to 100 products. Catalog references accept either an ID or one
+        of the existing slugs below.
       </p>
 
-      <form className="mt-5" onSubmit={submitImport}>
-        <label className="text-sm font-medium" htmlFor="product-import-json">
-          Products JSON
-          <textarea
-            className="mt-1 min-h-80 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus:border-ring"
-            id="product-import-json"
-            onChange={(event) => setJson(event.target.value)}
-            spellCheck={false}
-            value={json}
-          />
-        </label>
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <SlugReferenceList
+          error={brandsQuery.error}
+          isError={brandsQuery.isError}
+          isLoading={brandsQuery.isPending}
+          records={brands}
+          title="Available brandSlugs"
+        />
+        <SlugReferenceList
+          error={categoriesQuery.error}
+          isError={categoriesQuery.isError}
+          isLoading={categoriesQuery.isPending}
+          records={categories}
+          title="Available categorySlugs"
+        />
+        <SlugReferenceList
+          error={sourcePlatformsQuery.error}
+          isError={sourcePlatformsQuery.isError}
+          isLoading={sourcePlatformsQuery.isPending}
+          records={sourcePlatforms}
+          title="Available sourcePlatformSlugs"
+        />
+      </div>
 
-        {error === null ? null : (
-          <p className="mt-3 text-sm text-destructive" role="alert">
-            {error}
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+        <form onSubmit={submitImport}>
+          <label className="text-sm font-medium" htmlFor="product-import-json">
+            Products JSON
+            <textarea
+              className="mt-1 min-h-80 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus:border-ring"
+              id="product-import-json"
+              onChange={(event) => {
+                setCustomJson(event.target.value);
+              }}
+              spellCheck={false}
+              value={json}
+            />
+          </label>
+
+          {error === null ? null : (
+            <p className="mt-3 text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+              disabled={importMutation.isPending}
+              type="submit"
+            >
+              {importMutation.isPending ? "Importing" : "Import Products"}
+            </button>
+            <button
+              className="rounded-md border border-border px-4 py-2 text-sm font-medium"
+              disabled={importMutation.isPending}
+              onClick={useExampleJson}
+              type="button"
+            >
+              Use Example JSON
+            </button>
+            <button
+              className="rounded-md border border-border px-4 py-2 text-sm font-medium"
+              disabled={importMutation.isPending}
+              onClick={onClose}
+              type="button"
+            >
+              Close
+            </button>
+          </div>
+        </form>
+
+        <aside className="rounded-md border border-border bg-muted/30 p-4">
+          <h3 className="text-sm font-semibold">Example JSON</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This example uses the first available brand, category, and source platform slugs from
+            the current database.
           </p>
-        )}
-
-        <div className="mt-4 flex gap-3">
-          <button
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-            disabled={importMutation.isPending}
-            type="submit"
-          >
-            {importMutation.isPending ? "Importing" : "Import Products"}
-          </button>
-          <button
-            className="rounded-md border border-border px-4 py-2 text-sm font-medium"
-            disabled={importMutation.isPending}
-            onClick={onClose}
-            type="button"
-          >
-            Close
-          </button>
-        </div>
-      </form>
+          {!isExampleReady(exampleSlugs) ? (
+            <p className="mt-2 text-sm text-destructive">
+              Add at least one brand, category, and source platform before importing real rows.
+            </p>
+          ) : null}
+          <pre className="mt-3 max-h-96 overflow-auto rounded-md border border-border bg-background p-3 text-xs">
+            {exampleProducts}
+          </pre>
+        </aside>
+      </div>
 
       {importMutation.data === undefined ? null : (
         <div className="mt-6" role="status">

@@ -114,7 +114,13 @@ export function OutfitDetailScreen() {
           accessibilityLabel="Go back"
           accessibilityRole="button"
           className="h-11 w-11 items-center justify-center"
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/products");
+            }
+          }}
         >
           <Text className="text-2xl text-neutral-900">{"<"}</Text>
         </Pressable>

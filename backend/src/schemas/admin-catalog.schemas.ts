@@ -4,6 +4,7 @@ const uuidSchema = z.string().uuid();
 const catalogNameSchema = z.string().trim().min(1).max(120);
 const catalogSlugInputSchema = z.string().trim().min(1).max(120);
 const optionalUrlSchema = z.string().trim().url().nullable().optional();
+const optionalIsActiveSchema = z.boolean().optional();
 
 const paginationSchema = z.object({
   page: z.number().int().positive(),
@@ -36,6 +37,9 @@ export const createCatalogRecordRequestSchema = z
   .strict();
 
 export const updateCatalogRecordRequestSchema = createCatalogRecordRequestSchema
+  .extend({
+    isActive: optionalIsActiveSchema
+  })
   .partial()
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided."
@@ -50,6 +54,9 @@ export const createSourcePlatformRequestSchema = z
   .strict();
 
 export const updateSourcePlatformRequestSchema = createSourcePlatformRequestSchema
+  .extend({
+    isActive: optionalIsActiveSchema
+  })
   .partial()
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided."
@@ -59,6 +66,7 @@ export const catalogRecordResponseSchema = z.object({
   id: uuidSchema,
   name: z.string(),
   slug: z.string(),
+  isActive: z.boolean(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 });
@@ -95,6 +103,13 @@ export const adminSourcePlatformDetailResponseSchema = z.object({
   data: sourcePlatformResponseSchema
 });
 
+export const deleteCatalogRecordResponseSchema = z.object({
+  data: z.object({
+    success: z.boolean(),
+    deactivated: z.boolean()
+  })
+});
+
 export type AdminCatalogListQuery = z.infer<typeof adminCatalogListQuerySchema>;
 export type AdminCatalogParams = z.infer<typeof adminCatalogParamsSchema>;
 export type CreateCatalogRecordRequest = z.infer<typeof createCatalogRecordRequestSchema>;
@@ -105,3 +120,4 @@ export type CatalogRecordResponse = z.infer<typeof catalogRecordResponseSchema>;
 export type SourcePlatformResponse = z.infer<typeof sourcePlatformResponseSchema>;
 export type AdminCatalogListResponse = z.infer<typeof adminCatalogListResponseSchema>;
 export type AdminSourcePlatformListResponse = z.infer<typeof adminSourcePlatformListResponseSchema>;
+export type DeleteCatalogRecordResponse = z.infer<typeof deleteCatalogRecordResponseSchema>;

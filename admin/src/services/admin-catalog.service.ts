@@ -5,7 +5,8 @@ import type {
   AdminCatalogListInput,
   AdminCatalogListRecord,
   AdminCatalogListResponse,
-  AdminCatalogResource
+  AdminCatalogResource,
+  DeleteAdminCatalogRecordResponse
 } from "@/types/admin-catalog";
 
 function getResourcePath(resource: AdminCatalogResource): string {
@@ -43,6 +44,17 @@ export async function updateAdminCatalogRecord(
   const response = await adminApiClient.patch<AdminCatalogDetailResponse>(
     `${getResourcePath(resource)}/${id}`,
     input
+  );
+
+  return response.data.data;
+}
+
+export async function deactivateAdminCatalogRecord(
+  resource: AdminCatalogResource,
+  id: string
+): Promise<DeleteAdminCatalogRecordResponse["data"]> {
+  const response = await adminApiClient.delete<DeleteAdminCatalogRecordResponse>(
+    `${getResourcePath(resource)}/${id}`
   );
 
   return response.data.data;

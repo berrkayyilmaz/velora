@@ -35,18 +35,24 @@ model Brand {
   id        String    @id @default(uuid()) @db.Uuid
   name      String    @unique
   slug      String    @unique
+  isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   products  Product[]
+
+  @@index([isActive])
 }
 
 model Category {
   id        String    @id @default(uuid()) @db.Uuid
   name      String    @unique
   slug      String    @unique
+  isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   products  Product[]
+
+  @@index([isActive])
 }
 
 model SourcePlatform {
@@ -54,10 +60,13 @@ model SourcePlatform {
   name           String          @unique
   slug           String          @unique
   baseUrl        String?
+  isActive       Boolean         @default(true)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   products       Product[]
   redirectEvents RedirectEvent[]
+
+  @@index([isActive])
 }
 
 model Product {

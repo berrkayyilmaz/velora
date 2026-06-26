@@ -4,6 +4,7 @@ export type AdminCatalogRecord = {
   id: string;
   name: string;
   slug: string;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -42,10 +43,18 @@ export type AdminCatalogDetailResponse = {
 export type AdminCatalogInput = {
   name: string;
   slug?: string;
+  isActive?: boolean;
   baseUrl?: string | null;
 };
 
 export type UpdateAdminCatalogInput = {
   id: string;
   input: AdminCatalogInput;
+};
+
+export type DeleteAdminCatalogRecordResponse = {
+  data: {
+    success: boolean;
+    deactivated: boolean;
+  };
 };

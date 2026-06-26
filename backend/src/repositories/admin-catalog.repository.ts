@@ -6,6 +6,7 @@ const catalogRecordSelect = {
   id: true,
   name: true,
   slug: true,
+  isActive: true,
   createdAt: true,
   updatedAt: true
 } as const;
@@ -19,6 +20,7 @@ export type CatalogRecord = {
   id: string;
   name: string;
   slug: string;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -35,6 +37,7 @@ export type CatalogRecordWriteInput = {
 export type CatalogRecordUpdateInput = {
   name?: string;
   slug?: string;
+  isActive?: boolean;
 };
 
 export type SourcePlatformWriteInput = CatalogRecordWriteInput & {
@@ -174,6 +177,29 @@ export async function updateBrand(
   });
 }
 
+export async function countActiveProductsByBrandId(
+  prisma: PrismaClient,
+  brandId: string
+): Promise<number> {
+  return prisma.product.count({
+    where: {
+      brandId,
+      isActive: true
+    }
+  });
+}
+
+export async function deactivateBrand(
+  prisma: PrismaClient,
+  brandId: string
+): Promise<CatalogRecord> {
+  return prisma.brand.update({
+    where: { id: brandId },
+    data: { isActive: false },
+    select: catalogRecordSelect
+  });
+}
+
 export async function listCategories(
   prisma: PrismaClient,
   query: AdminCatalogListQuery
@@ -229,6 +255,29 @@ export async function updateCategory(
   });
 }
 
+export async function countActiveProductsByCategoryId(
+  prisma: PrismaClient,
+  categoryId: string
+): Promise<number> {
+  return prisma.product.count({
+    where: {
+      categoryId,
+      isActive: true
+    }
+  });
+}
+
+export async function deactivateCategory(
+  prisma: PrismaClient,
+  categoryId: string
+): Promise<CatalogRecord> {
+  return prisma.category.update({
+    where: { id: categoryId },
+    data: { isActive: false },
+    select: catalogRecordSelect
+  });
+}
+
 export async function listSourcePlatforms(
   prisma: PrismaClient,
   query: AdminCatalogListQuery
@@ -280,6 +329,29 @@ export async function updateSourcePlatform(
   return prisma.sourcePlatform.update({
     where: { id: sourcePlatformId },
     data: input,
+    select: sourcePlatformSelect
+  });
+}
+
+export async function countActiveProductsBySourcePlatformId(
+  prisma: PrismaClient,
+  sourcePlatformId: string
+): Promise<number> {
+  return prisma.product.count({
+    where: {
+      sourcePlatformId,
+      isActive: true
+    }
+  });
+}
+
+export async function deactivateSourcePlatform(
+  prisma: PrismaClient,
+  sourcePlatformId: string
+): Promise<SourcePlatformRecord> {
+  return prisma.sourcePlatform.update({
+    where: { id: sourcePlatformId },
+    data: { isActive: false },
     select: sourcePlatformSelect
   });
 }

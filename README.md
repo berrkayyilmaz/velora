@@ -211,6 +211,20 @@ npm.cmd run build
 npm.cmd run preview
 ```
 
+## Continuous Integration
+
+GitHub Actions runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for
+every pull request and every push to `main`. The workflow installs the locked
+workspace dependencies, generates Prisma Client, and runs:
+
+- Backend typecheck, lint, and format check
+- Frontend typecheck and lint
+- Admin typecheck, lint, and production build
+
+These checks do not start PostgreSQL because none of them connect to the
+database. Database-backed tests can add a service container later when such a
+test suite exists.
+
 ## Current MVP Status
 
 ### Implemented
@@ -230,6 +244,7 @@ npm.cmd run preview
 - Admin product JSON import with per-row validation and import summaries
 - Admin brand, category, and source-platform list, create, and edit
 - PostgreSQL schema, initial migration, and idempotent MVP seed data
+- GitHub Actions validation for backend, mobile, and admin workspaces
 
 ### Release Readiness
 
@@ -270,7 +285,7 @@ release builds.
 - Seed products use placeholder images and example retailer URLs. Real approved
   retailer data required for pre-launch shopping validation has not been added.
 - Backend CORS uses an explicit environment allowlist. Production reverse-proxy
-  configuration, deployment automation, CI, centralized monitoring, and external
+  configuration, deployment automation, centralized monitoring, and external
   error reporting are not configured. The shared error handler logs only through
   the Fastify logger.
 - There are no automated backend, mobile, or admin tests. Native iOS/Android

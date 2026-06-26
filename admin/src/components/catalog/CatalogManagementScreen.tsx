@@ -1,4 +1,4 @@
-import { Pencil, Plus } from "lucide-react";
+import { Archive, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { CatalogRecordForm } from "@/components/catalog/CatalogRecordForm";
@@ -6,6 +6,7 @@ import { PaginationControls } from "@/components/PaginationControls";
 import {
   useAdminCatalogRecords,
   useCreateAdminCatalogRecord,
+  useDeactivateAdminCatalogRecord,
   useUpdateAdminCatalogRecord
 } from "@/hooks/useAdminCatalog";
 import type {
@@ -39,12 +40,14 @@ export function CatalogManagementScreen({
   const recordsQuery = useAdminCatalogRecords(resource, page);
   const createMutation = useCreateAdminCatalogRecord(resource);
   const updateMutation = useUpdateAdminCatalogRecord(resource);
+  const deactivateMutation = useDeactivateAdminCatalogRecord(resource);
 
   const closeForm = () => {
     setFormMode(null);
     setEditingRecord(null);
     createMutation.reset();
     updateMutation.reset();
+    deactivateMutation.reset();
   };
 
   const openCreateForm = () => {
@@ -52,6 +55,7 @@ export function CatalogManagementScreen({
     setEditingRecord(null);
     setFormMode("create");
     createMutation.reset();
+    deactivateMutation.reset();
   };
 
   const openEditForm = (record: AdminCatalogListRecord) => {
@@ -59,6 +63,7 @@ export function CatalogManagementScreen({
     setEditingRecord(record);
     setFormMode("edit");
     updateMutation.reset();
+    deactivateMutation.reset();
   };
 
   const submitCreate = async (input: AdminCatalogInput) => {
@@ -79,6 +84,23 @@ export function CatalogManagementScreen({
     try {
       await updateMutation.mutateAsync({ id: editingRecord.id, input });
       setSuccessMessage(`${singularLabel} updated.`);
+      closeForm();
+    } catch {
+      return;
+    }
+  };
+
+  const deactivateRecord = async (record: AdminCatalogListRecord) => {
+    setSuccessMessage(null);
+    deactivateMutation.reset();
+
+    try {
+      const result = await deactivateMutation.mutateAsync(record.id);
+      setSuccessMessage(
+        result.deactivated
+          ? `${singularLabel} deactivated.`
+          : `${singularLabel} was already inactive.`
+      );
       closeForm();
     } catch {
       return;
@@ -107,6 +129,12 @@ export function CatalogManagementScreen({
           {successMessage}
         </p>
       )}
+
+      {deactivateMutation.isError ? (
+        <p className="mt-5 text-sm text-destructive" role="alert">
+          {getApiErrorMessage(deactivateMutation.error)}
+        </p>
+      ) : null}
 
       {formMode === null ? null : (
         <section aria-labelledby="catalog-form-heading" className="mt-6 border-y border-border py-6">
@@ -164,6 +192,7 @@ export function CatalogManagementScreen({
                   <tr className="border-b border-border">
                     <th className="px-3 py-3">Name</th>
                     <th className="px-3 py-3">Slug</th>
+                    <th className="px-3 py-3">Status</th>
                     {supportsBaseUrl ? <th className="px-3 py-3">Base URL</th> : null}
                     <th className="px-3 py-3">Updated</th>
                     <th className="px-3 py-3">Actions</th>
@@ -174,6 +203,17 @@ export function CatalogManagementScreen({
                     <tr className="border-b border-border" key={record.id}>
                       <td className="px-3 py-3 font-medium">{record.name}</td>
                       <td className="px-3 py-3 font-mono text-xs">{record.slug}</td>
+                      <td className="px-3 py-3">
+                        <span
+                          className={
+                            record.isActive
+                              ? "rounded-full border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-700"
+                              : "rounded-full border border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600"
+                          }
+                        >
+                          {record.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
                       {supportsBaseUrl ? (
                         <td className="px-3 py-3">
                           {"baseUrl" in record ? (record.baseUrl ?? "-") : "-"}
@@ -183,15 +223,32 @@ export function CatalogManagementScreen({
                         {formatDate(record.updatedAt)}
                       </td>
                       <td className="px-3 py-3">
-                        <button
-                          aria-label={`Edit ${record.name}`}
-                          className="inline-flex size-9 items-center justify-center rounded-md border border-border"
-                          onClick={() => openEditForm(record)}
-                          title={`Edit ${record.name}`}
-                          type="button"
-                        >
-                          <Pencil aria-hidden="true" size={16} />
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            aria-label={`Edit ${record.name}`}
+                            className="inline-flex size-9 items-center justify-center rounded-md border border-border"
+                            onClick={() => openEditForm(record)}
+                            title={`Edit ${record.name}`}
+                            type="button"
+                          >
+                            <Pencil aria-hidden="true" size={16} />
+                          </button>
+                          {record.isActive ? (
+                            <button
+                              aria-label={`Deactivate ${record.name}`}
+                              className="inline-flex size-9 items-center justify-center rounded-md border border-border text-destructive disabled:opacity-50"
+                              disabled={
+                                deactivateMutation.isPending &&
+                                deactivateMutation.variables === record.id
+                              }
+                              onClick={() => void deactivateRecord(record)}
+                              title={`Deactivate ${record.name}`}
+                              type="button"
+                            >
+                              <Archive aria-hidden="true" size={16} />
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))}

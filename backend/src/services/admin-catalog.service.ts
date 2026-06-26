@@ -1,9 +1,15 @@
 import type { PrismaClient } from "@prisma/client";
 
 import {
+  countActiveProductsByBrandId,
+  countActiveProductsByCategoryId,
+  countActiveProductsBySourcePlatformId,
   createBrand as createBrandRecord,
   createCategory as createCategoryRecord,
   createSourcePlatform as createSourcePlatformRecord,
+  deactivateBrand as deactivateBrandRecord,
+  deactivateCategory as deactivateCategoryRecord,
+  deactivateSourcePlatform as deactivateSourcePlatformRecord,
   findBrandById,
   findCategoryById,
   findSourcePlatformById,
@@ -26,6 +32,7 @@ import type {
   CatalogRecordResponse,
   CreateCatalogRecordRequest,
   CreateSourcePlatformRequest,
+  DeleteCatalogRecordResponse,
   SourcePlatformResponse,
   UpdateCatalogRecordRequest,
   UpdateSourcePlatformRequest
@@ -67,6 +74,7 @@ function toCatalogRecordResponse(record: CatalogRecord): CatalogRecordResponse {
     id: record.id,
     name: record.name,
     slug: record.slug,
+    isActive: record.isActive,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString()
   };
@@ -112,7 +120,8 @@ function buildCreateCatalogInput(input: CreateCatalogRecordRequest) {
 function buildUpdateCatalogInput(input: UpdateCatalogRecordRequest): CatalogRecordUpdateInput {
   return {
     ...(input.name === undefined ? {} : { name: input.name }),
-    ...(input.slug === undefined ? {} : { slug: resolveSlug(input.slug, input.slug) })
+    ...(input.slug === undefined ? {} : { slug: resolveSlug(input.slug, input.slug) }),
+    ...(input.isActive === undefined ? {} : { isActive: input.isActive })
   };
 }
 
@@ -130,30 +139,38 @@ function buildUpdateSourcePlatformInput(
   return {
     ...(input.name === undefined ? {} : { name: input.name }),
     ...(input.slug === undefined ? {} : { slug: resolveSlug(input.slug, input.slug) }),
-    ...(input.baseUrl === undefined ? {} : { baseUrl: input.baseUrl })
+    ...(input.baseUrl === undefined ? {} : { baseUrl: input.baseUrl }),
+    ...(input.isActive === undefined ? {} : { isActive: input.isActive })
   };
 }
 
-async function ensureBrandExists(prisma: PrismaClient, brandId: string): Promise<void> {
+async function ensureBrandExists(prisma: PrismaClient, brandId: string): Promise<CatalogRecord> {
   const brand = await findBrandById(prisma, brandId);
 
   if (brand === null) {
     throw new AdminCatalogServiceError("BRAND_NOT_FOUND", 404, "Brand was not found.");
   }
+
+  return brand;
 }
 
-async function ensureCategoryExists(prisma: PrismaClient, categoryId: string): Promise<void> {
+async function ensureCategoryExists(
+  prisma: PrismaClient,
+  categoryId: string
+): Promise<CatalogRecord> {
   const category = await findCategoryById(prisma, categoryId);
 
   if (category === null) {
     throw new AdminCatalogServiceError("CATEGORY_NOT_FOUND", 404, "Category was not found.");
   }
+
+  return category;
 }
 
 async function ensureSourcePlatformExists(
   prisma: PrismaClient,
   sourcePlatformId: string
-): Promise<void> {
+): Promise<SourcePlatformRecord> {
   const sourcePlatform = await findSourcePlatformById(prisma, sourcePlatformId);
 
   if (sourcePlatform === null) {
@@ -163,6 +180,17 @@ async function ensureSourcePlatformExists(
       "Source platform was not found."
     );
   }
+
+  return sourcePlatform;
+}
+
+function buildDeleteResponse(existingRecord: CatalogRecord): DeleteCatalogRecordResponse {
+  return {
+    data: {
+      success: true,
+      deactivated: existingRecord.isActive
+    }
+  };
 }
 
 export async function listAdminBrands(
@@ -219,6 +247,26 @@ export async function updateAdminBrand(
   }
 }
 
+export async function deactivateAdminBrand(
+  prisma: PrismaClient,
+  brandId: string
+): Promise<DeleteCatalogRecordResponse> {
+  const existingBrand = await ensureBrandExists(prisma, brandId);
+  const activeProductCount = await countActiveProductsByBrandId(prisma, brandId);
+
+  if (activeProductCount > 0) {
+    throw new AdminCatalogServiceError(
+      "BRAND_HAS_ACTIVE_PRODUCTS",
+      409,
+      "Brand cannot be deactivated while active products depend on it."
+    );
+  }
+
+  await deactivateBrandRecord(prisma, brandId);
+
+  return buildDeleteResponse(existingBrand);
+}
+
 export async function listAdminCategories(
   prisma: PrismaClient,
   query: AdminCatalogListQuery
@@ -271,6 +319,26 @@ export async function updateAdminCategory(
       "Category name or slug is already in use."
     );
   }
+}
+
+export async function deactivateAdminCategory(
+  prisma: PrismaClient,
+  categoryId: string
+): Promise<DeleteCatalogRecordResponse> {
+  const existingCategory = await ensureCategoryExists(prisma, categoryId);
+  const activeProductCount = await countActiveProductsByCategoryId(prisma, categoryId);
+
+  if (activeProductCount > 0) {
+    throw new AdminCatalogServiceError(
+      "CATEGORY_HAS_ACTIVE_PRODUCTS",
+      409,
+      "Category cannot be deactivated while active products depend on it."
+    );
+  }
+
+  await deactivateCategoryRecord(prisma, categoryId);
+
+  return buildDeleteResponse(existingCategory);
 }
 
 export async function listAdminSourcePlatforms(
@@ -332,4 +400,24 @@ export async function updateAdminSourcePlatform(
       "Source platform name or slug is already in use."
     );
   }
+}
+
+export async function deactivateAdminSourcePlatform(
+  prisma: PrismaClient,
+  sourcePlatformId: string
+): Promise<DeleteCatalogRecordResponse> {
+  const existingSourcePlatform = await ensureSourcePlatformExists(prisma, sourcePlatformId);
+  const activeProductCount = await countActiveProductsBySourcePlatformId(prisma, sourcePlatformId);
+
+  if (activeProductCount > 0) {
+    throw new AdminCatalogServiceError(
+      "SOURCE_PLATFORM_HAS_ACTIVE_PRODUCTS",
+      409,
+      "Source platform cannot be deactivated while active products depend on it."
+    );
+  }
+
+  await deactivateSourcePlatformRecord(prisma, sourcePlatformId);
+
+  return buildDeleteResponse(existingSourcePlatform);
 }

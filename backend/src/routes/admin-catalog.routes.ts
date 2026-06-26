@@ -11,6 +11,7 @@ import {
   adminSourcePlatformListResponseSchema,
   createCatalogRecordRequestSchema,
   createSourcePlatformRequestSchema,
+  deleteCatalogRecordResponseSchema,
   updateCatalogRecordRequestSchema,
   updateSourcePlatformRequestSchema
 } from "../schemas/admin-catalog.schemas.js";
@@ -19,6 +20,9 @@ import {
   createAdminBrand,
   createAdminCategory,
   createAdminSourcePlatform,
+  deactivateAdminBrand,
+  deactivateAdminCategory,
+  deactivateAdminSourcePlatform,
   listAdminBrands,
   listAdminCategories,
   listAdminSourcePlatforms,
@@ -110,6 +114,23 @@ const adminCatalogRoutes: FastifyPluginCallback = (app, _options, done) => {
     }
   });
 
+  app.delete("/brands/:id", async (request, reply) => {
+    const parsedParams = adminCatalogParamsSchema.safeParse(request.params);
+
+    if (!parsedParams.success) {
+      return sendValidationError(reply, parsedParams.error);
+    }
+
+    try {
+      const result = await deactivateAdminBrand(app.prisma, parsedParams.data.id);
+      const response = deleteCatalogRecordResponseSchema.parse(result);
+
+      return reply.status(200).send(response);
+    } catch (error) {
+      return sendAdminCatalogError(reply, error);
+    }
+  });
+
   app.get("/categories", async (request, reply) => {
     const parsedQuery = adminCatalogListQuerySchema.safeParse(request.query);
 
@@ -160,6 +181,23 @@ const adminCatalogRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const category = await updateAdminCategory(app.prisma, parsedParams.data.id, parsedBody.data);
       const response = adminCatalogDetailResponseSchema.parse({ data: category });
+
+      return reply.status(200).send(response);
+    } catch (error) {
+      return sendAdminCatalogError(reply, error);
+    }
+  });
+
+  app.delete("/categories/:id", async (request, reply) => {
+    const parsedParams = adminCatalogParamsSchema.safeParse(request.params);
+
+    if (!parsedParams.success) {
+      return sendValidationError(reply, parsedParams.error);
+    }
+
+    try {
+      const result = await deactivateAdminCategory(app.prisma, parsedParams.data.id);
+      const response = deleteCatalogRecordResponseSchema.parse(result);
 
       return reply.status(200).send(response);
     } catch (error) {
@@ -221,6 +259,23 @@ const adminCatalogRoutes: FastifyPluginCallback = (app, _options, done) => {
         parsedBody.data
       );
       const response = adminSourcePlatformDetailResponseSchema.parse({ data: sourcePlatform });
+
+      return reply.status(200).send(response);
+    } catch (error) {
+      return sendAdminCatalogError(reply, error);
+    }
+  });
+
+  app.delete("/source-platforms/:id", async (request, reply) => {
+    const parsedParams = adminCatalogParamsSchema.safeParse(request.params);
+
+    if (!parsedParams.success) {
+      return sendValidationError(reply, parsedParams.error);
+    }
+
+    try {
+      const result = await deactivateAdminSourcePlatform(app.prisma, parsedParams.data.id);
+      const response = deleteCatalogRecordResponseSchema.parse(result);
 
       return reply.status(200).send(response);
     } catch (error) {

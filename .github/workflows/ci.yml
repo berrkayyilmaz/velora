@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate workspace
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm --workspace backend run prisma:generate
+
+      - name: Backend typecheck
+        run: npm --workspace backend run typecheck
+
+      - name: Backend lint
+        run: npm --workspace backend run lint
+
+      - name: Backend format check
+        run: npm --workspace backend run format:check
+
+      - name: Frontend typecheck
+        run: npm --workspace frontend run typecheck
+
+      - name: Frontend lint
+        run: npm --workspace frontend run lint
+
+      - name: Admin typecheck
+        run: npm --workspace admin run typecheck
+
+      - name: Admin lint
+        run: npm --workspace admin run lint
+
+      - name: Admin build
+        run: npm --workspace admin run build
