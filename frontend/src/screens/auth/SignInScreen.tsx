@@ -54,6 +54,13 @@ export function SignInScreen() {
             textContentType: "password"
           }}
         />
+        <View className="items-end">
+          <Link href="/forgot-password" asChild>
+            <Pressable accessibilityRole="button">
+              <Text className="text-sm font-semibold text-neutral-900">Forgot password?</Text>
+            </Pressable>
+          </Link>
+        </View>
         <SubmitButton
           label="Sign In"
           loadingLabel="Signing In"

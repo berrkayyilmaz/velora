@@ -1,8 +1,18 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 
-import type { LoginFormValues, RegisterFormValues } from "@/schemas/auth.schemas";
-import { login, register } from "@/services/auth.service";
+import type {
+  ForgotPasswordFormValues,
+  LoginFormValues,
+  RegisterFormValues,
+  ResetPasswordFormValues
+} from "@/schemas/auth.schemas";
+import {
+  confirmPasswordReset,
+  login,
+  register,
+  requestPasswordReset
+} from "@/services/auth.service";
 import { useAuthStore } from "@/store/auth.store";
 
 export function useLoginMutation() {
@@ -28,5 +38,17 @@ export function useRegisterMutation() {
       await setSession(session);
       router.replace("/(tabs)/products");
     }
+  });
+}
+
+export function usePasswordResetRequestMutation() {
+  return useMutation({
+    mutationFn: (values: ForgotPasswordFormValues) => requestPasswordReset(values)
+  });
+}
+
+export function usePasswordResetConfirmMutation() {
+  return useMutation({
+    mutationFn: (values: ResetPasswordFormValues) => confirmPasswordReset(values)
   });
 }

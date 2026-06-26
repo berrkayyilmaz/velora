@@ -1,5 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 
+type PrismaExecutor = PrismaClient | Prisma.TransactionClient;
+
 const authUserSelect = {
   id: true,
   email: true,
@@ -70,6 +72,18 @@ export async function updateUserProfile(
     data: {
       ...(input.displayName === undefined ? {} : { displayName: input.displayName })
     },
+    select: authUserSelect
+  });
+}
+
+export async function updateUserPasswordHash(
+  prisma: PrismaExecutor,
+  userId: string,
+  passwordHash: string
+): Promise<AuthUserRecord> {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
     select: authUserSelect
   });
 }

@@ -21,6 +21,15 @@ export const loginRequestSchema = z.object({
   password: z.string().min(1).max(128)
 });
 
+export const passwordResetRequestSchema = z.object({
+  email: emailSchema
+});
+
+export const passwordResetConfirmRequestSchema = z.object({
+  token: z.string().trim().min(32).max(256),
+  newPassword: passwordSchema
+});
+
 export const userProfileResponseSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
@@ -36,7 +45,24 @@ export const authSessionResponseSchema = z.object({
   })
 });
 
+export const passwordResetRequestResponseSchema = z.object({
+  data: z.object({
+    accepted: z.boolean(),
+    resetToken: z.string().optional()
+  })
+});
+
+export const passwordResetConfirmResponseSchema = z.object({
+  data: z.object({
+    success: z.boolean()
+  })
+});
+
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
+export type PasswordResetRequest = z.infer<typeof passwordResetRequestSchema>;
+export type PasswordResetConfirmRequest = z.infer<typeof passwordResetConfirmRequestSchema>;
 export type UserProfileResponse = z.infer<typeof userProfileResponseSchema>;
 export type AuthSessionResponse = z.infer<typeof authSessionResponseSchema>;
+export type PasswordResetRequestResponse = z.infer<typeof passwordResetRequestResponseSchema>;
+export type PasswordResetConfirmResponse = z.infer<typeof passwordResetConfirmResponseSchema>;

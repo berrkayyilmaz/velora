@@ -230,6 +230,7 @@ test suite exists.
 ### Implemented
 
 - User email/password registration and login
+- Password reset request and confirmation with development-token response
 - Persisted mobile sessions, protected routes, global `401` handling, and local logout
 - Authenticated profile read and display-name update
 - Active product catalog, pagination, search, filters, filter options, and product detail
@@ -258,9 +259,8 @@ release builds.
 
 ## Known Limitations
 
-- Password reset is approved for MVP, but backend request/confirmation endpoints
-  and the mobile flow are not implemented. The database token model exists but
-  is unused.
+- Password reset does not send real email yet. In development, the API returns
+  the reset token so the MVP flow can be tested locally.
 - User and admin logout are local token removal only; the API logout endpoints
   in `API_SPEC.md` are not implemented. There is no refresh-token or token
   revocation flow.

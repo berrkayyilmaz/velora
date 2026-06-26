@@ -102,7 +102,7 @@ There is currently no automated frontend test suite.
 - Register with email, password, and optional display name
 - Authenticated and unauthenticated route protection
 - Local logout from the profile screen
-- Password reset route placeholder
+- Forgot password and reset password screens
 
 ### Product Discovery
 
@@ -189,8 +189,8 @@ src/
 - There is no refresh-token flow. A `401` response clears the persisted session
   and query cache, then returns the user to sign-in.
 - Logout is local only because the backend logout endpoint is not implemented.
-- Password reset is a placeholder and the backend reset endpoints are not
-  implemented.
+- Password reset does not send real email yet. In development, the backend
+  returns the reset token for local testing.
 - Product sorting is not exposed in the catalog UI.
 - Catalog cards do not provide direct favorite controls; favorite actions are on
   product detail.
