@@ -11,6 +11,10 @@
   "scripts": {
     "dev:admin": "npm --workspace admin run dev",
     "dev:frontend": "npm --workspace frontend run dev",
-    "dev:backend": "npm --workspace backend run dev"
+    "dev:backend": "npm --workspace backend run dev",
+    "validate": "npm run validate:backend && npm run validate:frontend && npm run validate:admin",
+    "validate:backend": "npm --workspace backend run typecheck && npm --workspace backend run lint && npm --workspace backend run format:check",
+    "validate:frontend": "npm --workspace frontend run typecheck && npm --workspace frontend run lint",
+    "validate:admin": "npm --workspace admin run typecheck && npm --workspace admin run lint && npm --workspace admin run build"
   }
 }

@@ -225,6 +225,14 @@ These checks do not start PostgreSQL because none of them connect to the
 database. Database-backed tests can add a service container later when such a
 test suite exists.
 
+Run the same local validation set from the repository root with:
+
+```powershell
+npm.cmd run validate
+```
+
+Manual MVP smoke testing is documented in [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md).
+
 ## Current MVP Status
 
 ### Implemented
