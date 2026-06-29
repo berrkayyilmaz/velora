@@ -1,10 +1,12 @@
 import { isAxiosError } from "axios";
+import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pencil, Trash2 } from "lucide-react-native";
+import { ImagePlus, Image as ImageIcon, Pencil, Trash2 } from "lucide-react-native";
 import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Platform, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ProductImage } from "@/components/products/ProductImage";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -15,6 +17,12 @@ import { Modal } from "@/components/ui/Modal";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { useDeleteWardrobeItem, useWardrobeItem } from "@/hooks/useWardrobe";
+import {
+  useDeleteWardrobeMedia,
+  useUploadWardrobeMedia,
+  useWardrobeMedia
+} from "@/hooks/useWardrobeMedia";
+import type { WardrobeMediaType } from "@/types/wardrobe-media";
 import type { WardrobeItemStatus } from "@/types/wardrobe";
 import { getApiErrorMessage } from "@/utils/api-error";
 
@@ -56,6 +64,32 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function getSupportedMediaType(asset: ImagePicker.ImagePickerAsset): WardrobeMediaType | null {
+  if (
+    asset.mimeType === "image/jpeg" ||
+    asset.mimeType === "image/png" ||
+    asset.mimeType === "image/webp"
+  ) {
+    return asset.mimeType;
+  }
+
+  const normalizedFileName = (asset.fileName ?? asset.uri).toLowerCase();
+
+  if (normalizedFileName.endsWith(".jpg") || normalizedFileName.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+
+  if (normalizedFileName.endsWith(".png")) {
+    return "image/png";
+  }
+
+  if (normalizedFileName.endsWith(".webp")) {
+    return "image/webp";
+  }
+
+  return null;
+}
+
 export function WardrobeItemDetailScreen() {
   const router = useRouter();
   const colors = useThemeColors();
@@ -69,7 +103,12 @@ export function WardrobeItemDetailScreen() {
   const notice = Array.isArray(params.notice) ? params.notice[0] : params.notice;
   const wardrobeItemQuery = useWardrobeItem(wardrobeItemId);
   const deleteMutation = useDeleteWardrobeItem();
+  const mediaQuery = useWardrobeMedia(wardrobeItemId);
+  const uploadMediaMutation = useUploadWardrobeMedia();
+  const deleteMediaMutation = useDeleteWardrobeMedia();
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isConfirmingMediaDelete, setIsConfirmingMediaDelete] = useState(false);
+  const [pickerError, setPickerError] = useState<string | null>(null);
   const isNotFound =
     wardrobeItemId === undefined ||
     (wardrobeItemQuery.isError &&
@@ -93,6 +132,78 @@ export function WardrobeItemDetailScreen() {
     deleteMutation.mutate(wardrobeItemId, {
       onSuccess: () => router.replace("/wardrobe")
     });
+  };
+
+  const selectAndUploadMedia = async () => {
+    if (wardrobeItemId === undefined) {
+      return;
+    }
+
+    setPickerError(null);
+    uploadMediaMutation.reset();
+
+    if (Platform.OS !== "web") {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        setPickerError("Photo library access is required to select an image.");
+        return;
+      }
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: false,
+        base64: false,
+        exif: false
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets[0];
+
+      if (asset === undefined) {
+        setPickerError("No image was selected.");
+        return;
+      }
+
+      const mediaType = getSupportedMediaType(asset);
+
+      if (mediaType === null) {
+        setPickerError("Select a JPEG, PNG, or WebP image.");
+        return;
+      }
+
+      uploadMediaMutation.mutate({
+        wardrobeItemId,
+        uri: asset.uri,
+        fileName: asset.fileName ?? `wardrobe-item.${mediaType.split("/")[1]}`,
+        mediaType,
+        ...(asset.file === undefined ? {} : { webFile: asset.file })
+      });
+    } catch {
+      setPickerError("The image picker could not be opened.");
+    }
+  };
+
+  const deleteCurrentMedia = () => {
+    if (wardrobeItemId === undefined || mediaQuery.data === null) {
+      return;
+    }
+
+    deleteMediaMutation.reset();
+    deleteMediaMutation.mutate(
+      {
+        wardrobeItemId,
+        mediaId: mediaQuery.data.id
+      },
+      {
+        onSuccess: () => setIsConfirmingMediaDelete(false)
+      }
+    );
   };
 
   return (
@@ -137,6 +248,72 @@ export function WardrobeItemDetailScreen() {
               </Text>
             </Card>
           ) : null}
+
+          <View className="gap-3">
+            <Text className="text-heading font-semibold text-foreground dark:text-foreground-dark">
+              Image
+            </Text>
+
+            {mediaQuery.isPending ? (
+              <View className="h-48">
+                <LoadingState label="Loading image" />
+              </View>
+            ) : mediaQuery.isError ? (
+              <ErrorState message={getApiErrorMessage(mediaQuery.error)} />
+            ) : mediaQuery.data === null ? (
+              <EmptyState
+                action={
+                  <Button
+                    isLoading={uploadMediaMutation.isPending}
+                    leftIcon={<ImagePlus color={colors.primaryForeground} size={18} />}
+                    loadingLabel="Uploading Image"
+                    onPress={() => void selectAndUploadMedia()}
+                  >
+                    Upload Image
+                  </Button>
+                }
+                className="border border-border dark:border-border-dark"
+                icon={<ImageIcon color={colors.mutedForeground} size={28} />}
+                title="No image uploaded"
+              />
+            ) : (
+              <Card className="overflow-hidden">
+                <ProductImage
+                  aspectRatio={1}
+                  imageUrl={mediaQuery.data.url}
+                  title={wardrobeItemQuery.data.title}
+                />
+                <View className="gap-3 p-4">
+                  <View className="flex-row items-center justify-between gap-3">
+                    <Badge variant="success">Ready</Badge>
+                    <Text className="text-caption text-muted-foreground dark:text-muted-foreground-dark">
+                      {mediaQuery.data.mediaType}
+                    </Text>
+                  </View>
+                  <Button
+                    isLoading={deleteMediaMutation.isPending}
+                    leftIcon={<Trash2 color={colors.destructive} size={17} />}
+                    loadingLabel="Deleting Image"
+                    onPress={() => setIsConfirmingMediaDelete(true)}
+                    variant="destructive-outline"
+                  >
+                    Delete Image
+                  </Button>
+                </View>
+              </Card>
+            )}
+
+            {pickerError === null ? null : (
+              <Text className="text-label text-destructive dark:text-destructive-dark">
+                {pickerError}
+              </Text>
+            )}
+            {uploadMediaMutation.isError ? (
+              <Text className="text-label text-destructive dark:text-destructive-dark">
+                {getApiErrorMessage(uploadMediaMutation.error)}
+              </Text>
+            ) : null}
+          </View>
 
           <Card className="px-4">
             <DetailRow label="Category" value={wardrobeItemQuery.data.category.name} />
@@ -187,6 +364,49 @@ export function WardrobeItemDetailScreen() {
           </View>
         </ScrollView>
       )}
+
+      <Modal
+        description={wardrobeItemQuery.data?.title}
+        footer={
+          <View className="flex-row gap-3">
+            <Button
+              className="flex-1"
+              disabled={deleteMediaMutation.isPending}
+              onPress={() => setIsConfirmingMediaDelete(false)}
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              isLoading={deleteMediaMutation.isPending}
+              loadingLabel="Deleting"
+              onPress={deleteCurrentMedia}
+              variant="destructive"
+            >
+              Delete Image
+            </Button>
+          </View>
+        }
+        onClose={() => {
+          if (!deleteMediaMutation.isPending) {
+            setIsConfirmingMediaDelete(false);
+          }
+        }}
+        title="Delete wardrobe image?"
+        visible={isConfirmingMediaDelete}
+      >
+        <View className="gap-3 p-5">
+          <Text className="text-label text-muted-foreground dark:text-muted-foreground-dark">
+            This permanently removes the uploaded image.
+          </Text>
+          {deleteMediaMutation.isError ? (
+            <Text className="text-label text-destructive dark:text-destructive-dark">
+              {getApiErrorMessage(deleteMediaMutation.error)}
+            </Text>
+          ) : null}
+        </View>
+      </Modal>
 
       <Modal
         description={wardrobeItemQuery.data?.title}
