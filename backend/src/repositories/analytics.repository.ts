@@ -16,7 +16,9 @@ type CreateAnalyticsEventInput = {
   eventType: AnalyticsEventType;
   productId?: string;
   outfitId?: string;
+  wardrobeItemId?: string;
   sourceScreen?: string;
+  metadata?: Prisma.InputJsonValue;
 };
 
 export async function findProductForAnalytics(
@@ -55,7 +57,9 @@ export async function createAnalyticsEvent(
       eventType: input.eventType,
       ...(input.productId === undefined ? {} : { productId: input.productId }),
       ...(input.outfitId === undefined ? {} : { outfitId: input.outfitId }),
-      ...(input.sourceScreen === undefined ? {} : { sourceScreen: input.sourceScreen })
+      ...(input.wardrobeItemId === undefined ? {} : { wardrobeItemId: input.wardrobeItemId }),
+      ...(input.sourceScreen === undefined ? {} : { sourceScreen: input.sourceScreen }),
+      ...(input.metadata === undefined ? {} : { metadata: input.metadata })
     },
     select: analyticsEventSelect
   });

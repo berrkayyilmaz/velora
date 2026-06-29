@@ -18,7 +18,10 @@ export const analyticsEventTypeSchema = z.enum([
   "outfit_deleted",
   "product_added_to_outfit",
   "product_removed_from_outfit",
-  "retailer_redirect_clicked"
+  "retailer_redirect_clicked",
+  "wardrobe_item_created",
+  "wardrobe_item_updated",
+  "wardrobe_item_deleted"
 ]);
 
 export const createAnalyticsEventRequestSchema = z

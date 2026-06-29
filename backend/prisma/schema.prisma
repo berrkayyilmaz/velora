@@ -7,6 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum WardrobeItemStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  DELETION_PENDING
+}
+
 model User {
   id                  String               @id @default(uuid()) @db.Uuid
   email               String               @unique
@@ -19,6 +26,7 @@ model User {
   analyticsEvents     AnalyticsEvent[]
   redirectEvents      RedirectEvent[]
   passwordResetTokens PasswordResetToken[]
+  wardrobeItems       WardrobeItem[]
 
   @@index([createdAt])
 }
@@ -44,13 +52,14 @@ model Brand {
 }
 
 model Category {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String    @unique
-  slug      String    @unique
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  products  Product[]
+  id            String         @id @default(uuid()) @db.Uuid
+  name          String         @unique
+  slug          String         @unique
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  products      Product[]
+  wardrobeItems WardrobeItem[]
 
   @@index([isActive])
 }
@@ -156,24 +165,47 @@ model OutfitProduct {
   @@index([createdAt])
 }
 
+model WardrobeItem {
+  id              String             @id @default(uuid()) @db.Uuid
+  userId          String             @db.Uuid
+  categoryId      String             @db.Uuid
+  title           String
+  color           String?
+  brandLabel      String?
+  notes           String?
+  status          WardrobeItemStatus @default(DRAFT)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category        Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  analyticsEvents AnalyticsEvent[]
+
+  @@index([userId, status, updatedAt])
+  @@index([userId, categoryId])
+  @@index([categoryId])
+}
+
 model AnalyticsEvent {
-  id           String   @id @default(uuid()) @db.Uuid
-  userId       String?  @db.Uuid
-  eventType    String
-  productId    String?  @db.Uuid
-  outfitId     String?  @db.Uuid
-  sourceScreen String?
-  metadata     Json?
-  createdAt    DateTime @default(now())
-  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  outfit       Outfit?  @relation(fields: [outfitId], references: [id], onDelete: SetNull)
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String?       @db.Uuid
+  eventType      String
+  productId      String?       @db.Uuid
+  outfitId       String?       @db.Uuid
+  wardrobeItemId String?       @db.Uuid
+  sourceScreen   String?
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product        Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  outfit         Outfit?       @relation(fields: [outfitId], references: [id], onDelete: SetNull)
+  wardrobeItem   WardrobeItem? @relation(fields: [wardrobeItemId], references: [id], onDelete: SetNull)
 
   @@index([eventType])
   @@index([createdAt])
   @@index([userId, createdAt])
   @@index([productId, eventType])
   @@index([outfitId, eventType])
+  @@index([wardrobeItemId, eventType])
   @@index([eventType, createdAt])
 }
 
