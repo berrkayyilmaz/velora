@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Compass, Heart, Shirt, UserRound } from "lucide-react-native";
+import { Archive, Compass, Heart, Shirt, UserRound } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 
 import { designTokens } from "@/theme/tokens";
@@ -47,6 +47,13 @@ export default function TabsLayout() {
         options={{
           title: "Outfits",
           tabBarIcon: ({ color, size }) => <Shirt color={color} size={size} />
+        }}
+      />
+      <Tabs.Screen
+        name="wardrobe"
+        options={{
+          title: "Wardrobe",
+          tabBarIcon: ({ color, size }) => <Archive color={color} size={size} />
         }}
       />
       <Tabs.Screen

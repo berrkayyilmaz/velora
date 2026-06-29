@@ -186,3 +186,12 @@ Product model
 Outfit model
 Mock product catalog
 Outfit builder MVP
+
+Token Efficiency Rules
+
+- Prefer focused tasks over broad tasks.
+- Reuse existing module patterns instead of rereading all documentation.
+- Do not summarize full files unless explicitly requested.
+- Report only files changed, commands run, errors, and test results.
+- Ask before performing large refactors.
+- Avoid implementing unrelated features.

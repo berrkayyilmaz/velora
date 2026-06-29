@@ -42,6 +42,9 @@ export default function RootLayout() {
           <Stack.Screen name="products/[productId]" />
           <Stack.Screen name="outfits/new" />
           <Stack.Screen name="outfits/[outfitId]" />
+          <Stack.Screen name="wardrobe/new" />
+          <Stack.Screen name="wardrobe/[wardrobeItemId]" />
+          <Stack.Screen name="wardrobe/[wardrobeItemId]/edit" />
         </Stack.Protected>
       </Stack>
     </AppProviders>
