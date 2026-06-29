@@ -1,5 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+
 type PaginationControlsProps = {
   label: string;
   page: number;
@@ -15,27 +17,29 @@ export function PaginationControls({
 }: PaginationControlsProps) {
   return (
     <nav aria-label={`${label} pagination`} className="flex items-center justify-between py-4">
-      <button
+      <Button
         aria-label={`Previous ${label} page`}
-        className="inline-flex size-9 items-center justify-center rounded-md border border-border disabled:opacity-50"
         disabled={page === 1}
         onClick={() => onPageChange(page - 1)}
+        size="icon"
         title={`Previous ${label} page`}
         type="button"
+        variant="outline"
       >
         <ChevronLeft aria-hidden="true" size={18} />
-      </button>
+      </Button>
       <span className="text-sm text-muted-foreground">Page {page}</span>
-      <button
+      <Button
         aria-label={`Next ${label} page`}
-        className="inline-flex size-9 items-center justify-center rounded-md border border-border disabled:opacity-50"
         disabled={!hasNextPage}
         onClick={() => onPageChange(page + 1)}
+        size="icon"
         title={`Next ${label} page`}
         type="button"
+        variant="outline"
       >
         <ChevronRight aria-hidden="true" size={18} />
-      </button>
+      </Button>
     </nav>
   );
 }

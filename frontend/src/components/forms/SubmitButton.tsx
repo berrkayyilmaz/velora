@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, Text } from "react-native";
+import { Button } from "@/components/ui/Button";
 
 type SubmitButtonProps = {
   label: string;
@@ -9,18 +9,14 @@ type SubmitButtonProps = {
 
 export function SubmitButton({ label, loadingLabel, isLoading, onPress }: SubmitButtonProps) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      className={`mt-2 h-12 flex-row items-center justify-center gap-2 rounded-md bg-neutral-950 px-4 ${
-        isLoading ? "opacity-60" : ""
-      }`}
-      disabled={isLoading}
+    <Button
+      className="mt-2"
+      isLoading={isLoading}
+      loadingLabel={loadingLabel}
       onPress={onPress}
+      size="lg"
     >
-      {isLoading ? <ActivityIndicator color="white" /> : null}
-      <Text className="text-base font-semibold text-white">
-        {isLoading ? loadingLabel : label}
-      </Text>
-    </Pressable>
+      {label}
+    </Button>
   );
 }

@@ -3,6 +3,10 @@ import { useState } from "react";
 
 import { CatalogRecordForm } from "@/components/catalog/CatalogRecordForm";
 import { PaginationControls } from "@/components/PaginationControls";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   useAdminCatalogRecords,
   useCreateAdminCatalogRecord,
@@ -114,14 +118,13 @@ export function CatalogManagementScreen({
     <main className="mx-auto w-full max-w-6xl p-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">{title}</h1>
-        <button
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+        <Button
           onClick={openCreateForm}
           type="button"
         >
           <Plus aria-hidden="true" size={17} />
           Create {singularLabel}
-        </button>
+        </Button>
       </div>
 
       {successMessage === null ? null : (
@@ -170,20 +173,28 @@ export function CatalogManagementScreen({
         </div>
 
         {recordsQuery.isPending ? (
-          <p className="mt-4 text-muted-foreground">Loading {title.toLowerCase()}.</p>
+          <div className="mt-4 grid gap-2" aria-label={`Loading ${title.toLowerCase()}`}>
+            <Skeleton className="h-12" />
+            <Skeleton className="h-12" />
+            <Skeleton className="h-12" />
+          </div>
         ) : recordsQuery.isError ? (
           <div className="mt-4" role="alert">
             <p className="text-destructive">{getApiErrorMessage(recordsQuery.error)}</p>
-            <button
-              className="mt-3 rounded-md border border-border px-3 py-2"
+            <Button
+              className="mt-3"
               onClick={() => void recordsQuery.refetch()}
               type="button"
+              variant="outline"
             >
               Retry
-            </button>
+            </Button>
           </div>
         ) : items.length === 0 ? (
-          <p className="mt-4 text-muted-foreground">No {title.toLowerCase()} found.</p>
+          <EmptyState
+            className="mt-4 border-y border-border"
+            title={`No ${title.toLowerCase()} found`}
+          />
         ) : (
           <>
             <div className="mt-4 overflow-x-auto">
@@ -204,15 +215,9 @@ export function CatalogManagementScreen({
                       <td className="px-3 py-3 font-medium">{record.name}</td>
                       <td className="px-3 py-3 font-mono text-xs">{record.slug}</td>
                       <td className="px-3 py-3">
-                        <span
-                          className={
-                            record.isActive
-                              ? "rounded-full border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-700"
-                              : "rounded-full border border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600"
-                          }
-                        >
+                        <Badge variant={record.isActive ? "success" : "outline"}>
                           {record.isActive ? "Active" : "Inactive"}
-                        </span>
+                        </Badge>
                       </td>
                       {supportsBaseUrl ? (
                         <td className="px-3 py-3">
@@ -224,29 +229,32 @@ export function CatalogManagementScreen({
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex gap-2">
-                          <button
+                          <Button
                             aria-label={`Edit ${record.name}`}
-                            className="inline-flex size-9 items-center justify-center rounded-md border border-border"
                             onClick={() => openEditForm(record)}
+                            size="icon"
                             title={`Edit ${record.name}`}
                             type="button"
+                            variant="outline"
                           >
                             <Pencil aria-hidden="true" size={16} />
-                          </button>
+                          </Button>
                           {record.isActive ? (
-                            <button
+                            <Button
                               aria-label={`Deactivate ${record.name}`}
-                              className="inline-flex size-9 items-center justify-center rounded-md border border-border text-destructive disabled:opacity-50"
+                              className="text-destructive"
                               disabled={
                                 deactivateMutation.isPending &&
                                 deactivateMutation.variables === record.id
                               }
                               onClick={() => void deactivateRecord(record)}
+                              size="icon"
                               title={`Deactivate ${record.name}`}
                               type="button"
+                              variant="outline"
                             >
                               <Archive aria-hidden="true" size={16} />
-                            </button>
+                            </Button>
                           ) : null}
                         </div>
                       </td>

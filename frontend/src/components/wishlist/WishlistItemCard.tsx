@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
 import { ProductImage } from "@/components/products/ProductImage";
+import { Button } from "@/components/ui/Button";
 import type { WishlistItem } from "@/types/wishlist";
 import { formatProductPrice } from "@/utils/price";
 
@@ -16,11 +17,11 @@ export function WishlistItemCard({ item, isRemoving, onRemove }: WishlistItemCar
   const { product } = item;
 
   return (
-    <View className="flex-row gap-4 border-b border-neutral-200 py-4">
+    <View className="flex-row gap-4 border-b border-border py-4 dark:border-border-dark">
       <Pressable
         accessibilityLabel={`View ${product.title}`}
         accessibilityRole="button"
-        className="w-28 overflow-hidden rounded-md"
+        className="w-28 overflow-hidden rounded-card"
         onPress={() =>
           router.push({
             pathname: "/products/[productId]",
@@ -46,28 +47,33 @@ export function WishlistItemCard({ item, isRemoving, onRemove }: WishlistItemCar
             })
           }
         >
-          <Text className="text-xs text-neutral-600" numberOfLines={1}>
+          <Text
+            className="text-caption text-muted-foreground dark:text-muted-foreground-dark"
+            numberOfLines={1}
+          >
             {product.brand.name}
           </Text>
-          <Text className="mt-1 text-base font-medium text-neutral-950" numberOfLines={2}>
+          <Text
+            className="mt-1 text-body font-medium text-foreground dark:text-foreground-dark"
+            numberOfLines={2}
+          >
             {product.title}
           </Text>
-          <Text className="mt-2 text-sm font-semibold text-neutral-950">
+          <Text className="mt-2 text-label font-semibold text-foreground dark:text-foreground-dark">
             {formatProductPrice(product.price)}
           </Text>
         </Pressable>
 
-        <Pressable
+        <Button
           accessibilityLabel={`Remove ${product.title} from wishlist`}
-          accessibilityRole="button"
-          className="h-10 self-start items-center justify-center rounded-md border border-neutral-300 px-4"
+          className="self-start"
           disabled={isRemoving}
           onPress={() => onRemove(product.id)}
+          size="sm"
+          variant="destructive-outline"
         >
-          <Text className="text-sm font-semibold text-neutral-900">
-            {isRemoving ? "Removing" : "Remove"}
-          </Text>
-        </Pressable>
+          {isRemoving ? "Removing" : "Remove"}
+        </Button>
       </View>
     </View>
   );

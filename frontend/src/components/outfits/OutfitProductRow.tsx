@@ -1,7 +1,10 @@
 import { useRouter } from "expo-router";
+import { ExternalLink, Trash2 } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 
 import { ProductImage } from "@/components/products/ProductImage";
+import { Button } from "@/components/ui/Button";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ProductSummary } from "@/types/product";
 import { formatProductPrice } from "@/utils/price";
 
@@ -25,13 +28,14 @@ export function OutfitProductRow({
   onViewRetailer
 }: OutfitProductRowProps) {
   const router = useRouter();
+  const colors = useThemeColors();
 
   return (
-    <View className="flex-row gap-4 border-b border-neutral-200 py-4">
+    <View className="flex-row gap-4 border-b border-border py-4 dark:border-border-dark">
       <Pressable
         accessibilityLabel={`View ${product.title}`}
         accessibilityRole="button"
-        className="w-24 overflow-hidden rounded-md"
+        className="w-24 overflow-hidden rounded-card"
         onPress={() =>
           router.push({
             pathname: "/products/[productId]",
@@ -57,40 +61,43 @@ export function OutfitProductRow({
             })
           }
         >
-          <Text className="text-xs text-neutral-600" numberOfLines={1}>
+          <Text
+            className="text-caption text-muted-foreground dark:text-muted-foreground-dark"
+            numberOfLines={1}
+          >
             {product.brand.name}
           </Text>
-          <Text className="mt-1 text-base font-medium text-neutral-950" numberOfLines={2}>
+          <Text
+            className="mt-1 text-body font-medium text-foreground dark:text-foreground-dark"
+            numberOfLines={2}
+          >
             {product.title}
           </Text>
-          <Text className="mt-2 text-sm font-semibold text-neutral-950">
+          <Text className="mt-2 text-label font-semibold text-foreground dark:text-foreground-dark">
             {formatProductPrice(product.price)}
           </Text>
         </Pressable>
 
         <View className="flex-row gap-2">
-          <Pressable
+          <Button
             accessibilityLabel={`View ${product.title} at retailer`}
-            accessibilityRole="button"
-            className="h-10 items-center justify-center rounded-md bg-neutral-950 px-3"
             disabled={retailerDisabled}
+            leftIcon={<ExternalLink color={colors.primaryForeground} size={15} />}
             onPress={() => onViewRetailer(product.id)}
+            size="sm"
           >
-            <Text className="text-sm font-semibold text-white">
-              {isOpeningRetailer ? "Opening" : "Retailer"}
-            </Text>
-          </Pressable>
-          <Pressable
+            {isOpeningRetailer ? "Opening" : "Retailer"}
+          </Button>
+          <Button
             accessibilityLabel={`Remove ${product.title} from outfit`}
-            accessibilityRole="button"
-            className="h-10 items-center justify-center rounded-md border border-neutral-300 px-3"
             disabled={removeDisabled}
+            leftIcon={<Trash2 color={colors.destructive} size={15} />}
             onPress={() => onRemove(product.id)}
+            size="sm"
+            variant="destructive-outline"
           >
-            <Text className="text-sm font-semibold text-neutral-900">
-              {isRemoving ? "Removing" : "Remove"}
-            </Text>
-          </Pressable>
+            {isRemoving ? "Removing" : "Remove"}
+          </Button>
         </View>
       </View>
     </View>

@@ -1,5 +1,9 @@
 import { type FormEvent, useMemo, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/input";
 import { useAdminCatalogReferenceRecords } from "@/hooks/useAdminCatalog";
 import { useImportAdminProducts } from "@/hooks/useAdminProducts";
 import type { AdminCatalogListRecord } from "@/types/admin-catalog";
@@ -96,8 +100,9 @@ function SlugReferenceList({
   title: string;
 }) {
   return (
-    <div className="rounded-md border border-border bg-muted/30 p-3">
-      <h3 className="text-sm font-semibold">{title}</h3>
+    <Card>
+      <CardContent className="p-3">
+        <h3 className="text-sm font-semibold">{title}</h3>
       {isLoading ? (
         <p className="mt-2 text-sm text-muted-foreground">Loading slugs...</p>
       ) : isError ? (
@@ -107,17 +112,14 @@ function SlugReferenceList({
       ) : (
         <ul className="mt-2 flex flex-wrap gap-2">
           {records.map((record) => (
-            <li
-              className="rounded-md border border-border bg-background px-2 py-1 font-mono text-xs"
-              key={record.id}
-              title={record.name}
-            >
-              {record.slug}
+            <li key={record.id} title={record.name}>
+              <Badge className="font-mono" variant="outline">{record.slug}</Badge>
             </li>
           ))}
         </ul>
       )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -219,8 +221,8 @@ export function ProductImportPanel({ onClose }: ProductImportPanelProps) {
         <form onSubmit={submitImport}>
           <label className="text-sm font-medium" htmlFor="product-import-json">
             Products JSON
-            <textarea
-              className="mt-1 min-h-80 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus:border-ring"
+            <Textarea
+              className="mt-1 min-h-80 font-mono"
               id="product-import-json"
               onChange={(event) => {
                 setCustomJson(event.target.value);
@@ -237,34 +239,34 @@ export function ProductImportPanel({ onClose }: ProductImportPanelProps) {
           )}
 
           <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-              disabled={importMutation.isPending}
+            <Button
+              isLoading={importMutation.isPending}
               type="submit"
             >
               {importMutation.isPending ? "Importing" : "Import Products"}
-            </button>
-            <button
-              className="rounded-md border border-border px-4 py-2 text-sm font-medium"
+            </Button>
+            <Button
               disabled={importMutation.isPending}
               onClick={useExampleJson}
               type="button"
+              variant="outline"
             >
               Use Example JSON
-            </button>
-            <button
-              className="rounded-md border border-border px-4 py-2 text-sm font-medium"
+            </Button>
+            <Button
               disabled={importMutation.isPending}
               onClick={onClose}
               type="button"
+              variant="outline"
             >
               Close
-            </button>
+            </Button>
           </div>
         </form>
 
-        <aside className="rounded-md border border-border bg-muted/30 p-4">
-          <h3 className="text-sm font-semibold">Example JSON</h3>
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold">Example JSON</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             This example uses the first available brand, category, and source platform slugs from
             the current database.
@@ -277,7 +279,8 @@ export function ProductImportPanel({ onClose }: ProductImportPanelProps) {
           <pre className="mt-3 max-h-96 overflow-auto rounded-md border border-border bg-background p-3 text-xs">
             {exampleProducts}
           </pre>
-        </aside>
+          </CardContent>
+        </Card>
       </div>
 
       {importMutation.data === undefined ? null : (

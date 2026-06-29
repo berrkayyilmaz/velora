@@ -1,6 +1,9 @@
 import { useState } from "react";
 
 import { PaginationControls } from "@/components/PaginationControls";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   useAdminAnalyticsEvents,
   useAdminAnalyticsRedirects
@@ -54,20 +57,25 @@ export function AnalyticsScreen() {
       <section className="mt-8" aria-labelledby="events-heading">
         <h2 className="text-lg font-semibold" id="events-heading">Events</h2>
         {eventsQuery.isPending ? (
-          <p className="mt-4 text-muted-foreground">Loading events.</p>
+          <div aria-label="Loading events" className="mt-4 grid gap-2">
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+          </div>
         ) : eventsQuery.isError ? (
           <div className="mt-4" role="alert">
             <p className="text-destructive">{getApiErrorMessage(eventsQuery.error)}</p>
-            <button
-              className="mt-3 rounded-md border border-border px-3 py-2"
+            <Button
+              className="mt-3"
               onClick={() => void eventsQuery.refetch()}
               type="button"
+              variant="outline"
             >
               Retry
-            </button>
+            </Button>
           </div>
         ) : eventsQuery.data.data.items.length === 0 ? (
-          <p className="mt-4 text-muted-foreground">No analytics events found.</p>
+          <EmptyState className="mt-4 border-y border-border" title="No analytics events found" />
         ) : (
           <>
             <div className="mt-4 overflow-x-auto">
@@ -102,20 +110,25 @@ export function AnalyticsScreen() {
       <section className="mt-10" aria-labelledby="redirects-heading">
         <h2 className="text-lg font-semibold" id="redirects-heading">Redirects</h2>
         {redirectsQuery.isPending ? (
-          <p className="mt-4 text-muted-foreground">Loading redirects.</p>
+          <div aria-label="Loading redirects" className="mt-4 grid gap-2">
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+          </div>
         ) : redirectsQuery.isError ? (
           <div className="mt-4" role="alert">
             <p className="text-destructive">{getApiErrorMessage(redirectsQuery.error)}</p>
-            <button
-              className="mt-3 rounded-md border border-border px-3 py-2"
+            <Button
+              className="mt-3"
               onClick={() => void redirectsQuery.refetch()}
               type="button"
+              variant="outline"
             >
               Retry
-            </button>
+            </Button>
           </div>
         ) : redirectsQuery.data.data.items.length === 0 ? (
-          <p className="mt-4 text-muted-foreground">No retailer redirects found.</p>
+          <EmptyState className="mt-4 border-y border-border" title="No retailer redirects found" />
         ) : (
           <>
             <div className="mt-4 overflow-x-auto">

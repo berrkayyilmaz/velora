@@ -1,5 +1,7 @@
 import { type FormEvent, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { AdminCatalogInput, AdminCatalogListRecord } from "@/types/admin-catalog";
 
 type CatalogRecordFormProps = {
@@ -15,9 +17,6 @@ type CatalogRecordFormState = {
   slug: string;
   baseUrl: string;
 };
-
-const inputClassName =
-  "mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring";
 
 function getInitialState(record?: AdminCatalogListRecord): CatalogRecordFormState {
   return {
@@ -52,8 +51,8 @@ export function CatalogRecordForm({
     <form className="mt-5 grid max-w-2xl gap-4" onSubmit={submitRecord}>
       <label className="text-sm font-medium" htmlFor="catalog-name">
         Name
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="catalog-name"
           maxLength={120}
           onChange={(event) => setForm({ ...form, name: event.target.value })}
@@ -64,8 +63,8 @@ export function CatalogRecordForm({
 
       <label className="text-sm font-medium" htmlFor="catalog-slug">
         Slug
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="catalog-slug"
           maxLength={120}
           onChange={(event) => setForm({ ...form, slug: event.target.value })}
@@ -77,8 +76,8 @@ export function CatalogRecordForm({
       {supportsBaseUrl ? (
         <label className="text-sm font-medium" htmlFor="catalog-base-url">
           Base URL
-          <input
-            className={inputClassName}
+          <Input
+            className="mt-1"
             id="catalog-base-url"
             onChange={(event) => setForm({ ...form, baseUrl: event.target.value })}
             placeholder="https://example.com"
@@ -89,21 +88,20 @@ export function CatalogRecordForm({
       ) : null}
 
       <div className="flex gap-3">
-        <button
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          disabled={isSubmitting}
+        <Button
+          isLoading={isSubmitting}
           type="submit"
         >
           {isSubmitting ? "Saving" : record === undefined ? "Create" : "Save Changes"}
-        </button>
-        <button
-          className="rounded-md border border-border px-4 py-2 text-sm font-medium"
+        </Button>
+        <Button
           disabled={isSubmitting}
           onClick={onCancel}
           type="button"
+          variant="outline"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

@@ -49,19 +49,19 @@ export function ResetPasswordScreen() {
   return (
     <AuthScreenLayout title="Reset Password">
       <View className="gap-4">
-        <Text className="text-sm leading-5 text-neutral-600">
+        <Text className="text-label text-muted-foreground dark:text-muted-foreground-dark">
           Enter your reset token and choose a new password.
         </Text>
 
         {passwordResetMutation.error !== null ? (
-          <Text className="text-sm text-red-700">
+          <Text className="text-label text-destructive dark:text-destructive-dark">
             {getApiErrorMessage(passwordResetMutation.error)}
           </Text>
         ) : null}
 
         {isComplete ? (
-          <View className="rounded-md border border-green-200 bg-green-50 p-4">
-            <Text className="text-sm text-green-800">
+          <View className="rounded-card border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
+            <Text className="text-label text-success dark:text-success-dark">
               Password updated. Returning to sign in.
             </Text>
           </View>
@@ -102,7 +102,9 @@ export function ResetPasswordScreen() {
       <View className="mt-6 flex-row items-center justify-center gap-2">
         <Link href="/forgot-password" asChild>
           <Pressable accessibilityRole="button">
-            <Text className="text-sm font-semibold text-neutral-900">Request a new token</Text>
+            <Text className="text-label font-semibold text-primary dark:text-primary">
+              Request a new token
+            </Text>
           </Pressable>
         </Link>
       </View>
@@ -110,7 +112,9 @@ export function ResetPasswordScreen() {
       <View className="mt-4 flex-row items-center justify-center gap-2">
         <Link href="/sign-in" asChild>
           <Pressable accessibilityRole="button">
-            <Text className="text-sm text-neutral-600">Back to sign in</Text>
+            <Text className="text-label text-muted-foreground dark:text-muted-foreground-dark">
+              Back to sign in
+            </Text>
           </Pressable>
         </Link>
       </View>

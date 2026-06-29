@@ -1,11 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useForm } from "react-hook-form";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FormField } from "@/components/forms/FormField";
 import { SubmitButton } from "@/components/forms/SubmitButton";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { useCreateOutfit } from "@/hooks/useOutfits";
 import {
   outfitNameFormSchema,
@@ -41,30 +42,21 @@ export function OutfitBuilderScreen() {
       }
     );
   });
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/products");
+    }
+  };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
-      <View className="h-14 flex-row items-center border-b border-neutral-200 px-3">
-        <Pressable
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          className="h-11 w-11 items-center justify-center"
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace("/products");
-            }
-          }}
-        >
-          <Text className="text-2xl text-neutral-900">{"<"}</Text>
-        </Pressable>
-        <Text className="ml-2 text-lg font-semibold text-neutral-950">Create Outfit</Text>
-      </View>
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+      <ScreenHeader onBack={goBack} title="Create Outfit" />
 
       <View className="gap-5 px-5 py-6">
         {createOutfitMutation.isError ? (
-          <Text className="text-sm text-red-700">
+          <Text className="text-label text-destructive dark:text-destructive-dark">
             {getApiErrorMessage(createOutfitMutation.error)}
           </Text>
         ) : null}
@@ -83,7 +75,9 @@ export function OutfitBuilderScreen() {
         />
 
         {productId !== undefined ? (
-          <Text className="text-sm text-neutral-600">1 product selected</Text>
+          <Text className="text-label text-muted-foreground dark:text-muted-foreground-dark">
+            1 product selected
+          </Text>
         ) : null}
 
         <SubmitButton

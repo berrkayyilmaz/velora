@@ -8,7 +8,7 @@ type AuthScreenLayoutProps = PropsWithChildren<{
 
 export function AuthScreenLayout({ title, children }: AuthScreenLayoutProps) {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
@@ -18,7 +18,9 @@ export function AuthScreenLayout({ title, children }: AuthScreenLayoutProps) {
           keyboardShouldPersistTaps="handled"
         >
           <View className="flex-1 justify-center px-6 py-10">
-            <Text className="mb-8 text-3xl font-semibold text-neutral-950">{title}</Text>
+            <Text className="mb-8 text-display font-semibold text-foreground dark:text-foreground-dark">
+              {title}
+            </Text>
             {children}
           </View>
         </ScrollView>

@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminAnalyticsSummary } from "@/hooks/useAdminAnalytics";
 import { getApiErrorMessage } from "@/utils/api-error";
 
@@ -18,27 +21,37 @@ export function DashboardScreen() {
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
       {summaryQuery.isPending ? (
-        <p className="mt-6 text-muted-foreground">Loading dashboard.</p>
+        <section
+          aria-label="Loading analytics summary"
+          className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {SUMMARY_ITEMS.map((item) => (
+            <Skeleton className="h-24" key={item.key} />
+          ))}
+        </section>
       ) : summaryQuery.isError ? (
         <div className="mt-6" role="alert">
           <p className="text-destructive">{getApiErrorMessage(summaryQuery.error)}</p>
-          <button
-            className="mt-3 rounded-md border border-border px-3 py-2"
+          <Button
+            className="mt-3"
             onClick={() => void summaryQuery.refetch()}
             type="button"
+            variant="outline"
           >
             Retry
-          </button>
+          </Button>
         </div>
       ) : (
         <section aria-label="Analytics summary" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {SUMMARY_ITEMS.map((item) => (
-            <article className="rounded-md border border-border p-4" key={item.key}>
-              <h2 className="text-sm font-medium text-muted-foreground">{item.label}</h2>
-              <p className="mt-2 text-2xl font-semibold">
-                {summaryQuery.data[item.key].toLocaleString()}
-              </p>
-            </article>
+            <Card key={item.key}>
+              <CardContent>
+                <h2 className="text-sm font-medium text-muted-foreground">{item.label}</h2>
+                <p className="mt-2 text-2xl font-semibold">
+                  {summaryQuery.data[item.key].toLocaleString()}
+                </p>
+              </CardContent>
+            </Card>
           ))}
         </section>
       )}

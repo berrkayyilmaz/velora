@@ -37,25 +37,27 @@ export function ForgotPasswordScreen() {
   return (
     <AuthScreenLayout title="Forgot Password">
       <View className="gap-4">
-        <Text className="text-sm leading-5 text-neutral-600">
+        <Text className="text-label text-muted-foreground dark:text-muted-foreground-dark">
           Enter your account email to request a password reset token.
         </Text>
 
         {passwordResetMutation.error !== null ? (
-          <Text className="text-sm text-red-700">
+          <Text className="text-label text-destructive dark:text-destructive-dark">
             {getApiErrorMessage(passwordResetMutation.error)}
           </Text>
         ) : null}
 
         {submittedEmail !== null ? (
-          <View className="gap-3 rounded-md border border-green-200 bg-green-50 p-4">
-            <Text className="text-sm text-green-800">
+          <View className="gap-3 rounded-card border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
+            <Text className="text-label text-success dark:text-success-dark">
               If an account exists for {submittedEmail}, a reset token has been generated.
             </Text>
             {passwordResetMutation.data?.resetToken !== undefined ? (
               <View className="gap-2">
-                <Text className="text-sm font-semibold text-green-900">Development token</Text>
-                <Text selectable className="text-sm text-green-900">
+                <Text className="text-label font-semibold text-success dark:text-success-dark">
+                  Development token
+                </Text>
+                <Text selectable className="text-label text-success dark:text-success-dark">
                   {passwordResetMutation.data.resetToken}
                 </Text>
               </View>
@@ -86,7 +88,9 @@ export function ForgotPasswordScreen() {
       <View className="mt-6 flex-row items-center justify-center gap-2">
         <Link href="/reset-password" asChild>
           <Pressable accessibilityRole="button">
-            <Text className="text-sm font-semibold text-neutral-900">I have a reset token</Text>
+            <Text className="text-label font-semibold text-primary dark:text-primary">
+              I have a reset token
+            </Text>
           </Pressable>
         </Link>
       </View>
@@ -94,7 +98,9 @@ export function ForgotPasswordScreen() {
       <View className="mt-4 flex-row items-center justify-center gap-2">
         <Link href="/sign-in" asChild>
           <Pressable accessibilityRole="button">
-            <Text className="text-sm text-neutral-600">Back to sign in</Text>
+            <Text className="text-label text-muted-foreground dark:text-muted-foreground-dark">
+              Back to sign in
+            </Text>
           </Pressable>
         </Link>
       </View>

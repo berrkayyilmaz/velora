@@ -1,21 +1,23 @@
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  Text,
-  TextInput,
-  View
-} from "react-native";
+import { FlatList, View } from "react-native";
+import { ListFilter, SearchX } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductFiltersModal } from "@/components/products/ProductFiltersModal";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { Input } from "@/components/ui/Input";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { useProductCatalog } from "@/hooks/useProductCatalog";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ProductSummary } from "@/types/product";
 import { getApiErrorMessage } from "@/utils/api-error";
 
 export function ProductCatalogScreen() {
+  const colors = useThemeColors();
   const [filtersVisible, setFiltersVisible] = useState(false);
   const {
     filters,
@@ -32,53 +34,42 @@ export function ProductCatalogScreen() {
   const renderProduct = ({ item }: { item: ProductSummary }) => <ProductCard product={item} />;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
-      <View className="h-16 flex-row items-center justify-between border-b border-neutral-200 px-4">
-        <Text className="text-2xl font-semibold text-neutral-950">Discover</Text>
-        <Pressable
-          accessibilityRole="button"
-          className="h-10 min-w-24 items-center justify-center rounded-md border border-neutral-300 bg-white px-3"
-          onPress={() => setFiltersVisible(true)}
-        >
-          <Text className="text-sm font-semibold text-neutral-900">
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+      <ScreenHeader
+        action={
+          <Button
+            leftIcon={<ListFilter color={colors.foreground} size={17} />}
+            size="sm"
+            variant="outline"
+            onPress={() => setFiltersVisible(true)}
+          >
             Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-          </Text>
-        </Pressable>
-      </View>
+          </Button>
+        }
+        title="Discover"
+      />
 
-      <View className="border-b border-neutral-200 px-4 py-3">
-        <TextInput
+      <View className="border-b border-border bg-surface px-4 py-3 dark:border-border-dark dark:bg-surface-dark">
+        <Input
           accessibilityLabel="Search products"
           autoCapitalize="none"
           autoCorrect={false}
-          className="h-11 rounded-md border border-neutral-300 bg-white px-3 text-base text-neutral-950"
+          className="h-11"
           onChangeText={setSearchInput}
           onSubmitEditing={submitSearch}
           placeholder="Search products"
-          placeholderTextColor="#737373"
           returnKeyType="search"
           value={searchInput}
         />
       </View>
 
       {productsQuery.isPending ? (
-        <View className="flex-1 items-center justify-center gap-3">
-          <ActivityIndicator color="#171717" />
-          <Text className="text-sm text-neutral-600">Loading products</Text>
-        </View>
+        <LoadingState label="Loading products" />
       ) : productsQuery.isError ? (
-        <View className="flex-1 items-center justify-center gap-4 px-6">
-          <Text className="text-center text-sm text-red-700">
-            {getApiErrorMessage(productsQuery.error)}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            className="h-11 items-center justify-center rounded-md bg-neutral-950 px-5"
-            onPress={() => void productsQuery.refetch()}
-          >
-            <Text className="font-semibold text-white">Retry</Text>
-          </Pressable>
-        </View>
+        <ErrorState
+          message={getApiErrorMessage(productsQuery.error)}
+          onRetry={() => void productsQuery.refetch()}
+        />
       ) : (
         <FlatList
           columnWrapperStyle={{ gap: 12 }}
@@ -89,16 +80,16 @@ export function ProductCatalogScreen() {
           data={products}
           keyExtractor={(product) => product.id}
           ListEmptyComponent={
-            <View className="flex-1 items-center justify-center px-6">
-              <Text className="text-center text-base text-neutral-600">
-                No products match your search or filters.
-              </Text>
-            </View>
+            <EmptyState
+              description="Try adjusting your search or clearing a filter."
+              icon={<SearchX color={colors.mutedForeground} size={30} />}
+              title="No products found"
+            />
           }
           ListFooterComponent={
             productsQuery.isFetchingNextPage ? (
-              <View className="items-center py-5">
-                <ActivityIndicator color="#171717" />
+              <View className="h-18">
+                <LoadingState label="Loading more products" />
               </View>
             ) : null
           }

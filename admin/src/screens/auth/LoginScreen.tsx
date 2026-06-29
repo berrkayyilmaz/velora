@@ -1,5 +1,8 @@
 import { type FormEvent, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useAdminLogin } from "@/hooks/useAdminLogin";
 import { getApiErrorMessage } from "@/utils/api-error";
 
@@ -16,9 +19,13 @@ export function LoginScreen() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <section className="w-full max-w-sm rounded-md border border-border bg-background p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">Admin Login</h1>
-        <form className="mt-6 grid gap-4" onSubmit={submitLogin}>
+      <Card className="w-full max-w-sm shadow-sm">
+        <CardHeader>
+          <h1 className="text-2xl font-semibold">Admin Login</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Internal Velora access</p>
+        </CardHeader>
+        <CardContent>
+          <form className="grid gap-4" onSubmit={submitLogin}>
           {loginMutation.isError ? (
             <p className="text-sm text-destructive" role="alert">
               {getApiErrorMessage(loginMutation.error)}
@@ -27,9 +34,8 @@ export function LoginScreen() {
 
           <label className="grid gap-1.5 text-sm font-medium" htmlFor="email">
             Email
-            <input
+            <Input
               autoComplete="email"
-              className="h-10 rounded-md border border-input bg-background px-3 outline-none focus:border-ring"
               id="email"
               name="email"
               onChange={(event) => setEmail(event.target.value)}
@@ -44,9 +50,8 @@ export function LoginScreen() {
             htmlFor="password"
           >
             Password
-            <input
+            <Input
               autoComplete="current-password"
-              className="h-10 rounded-md border border-input bg-background px-3 outline-none focus:border-ring"
               id="password"
               name="password"
               onChange={(event) => setPassword(event.target.value)}
@@ -56,15 +61,16 @@ export function LoginScreen() {
             />
           </label>
 
-          <button
-            className="mt-2 h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
-            disabled={loginMutation.isPending}
+          <Button
+            className="mt-2"
+            isLoading={loginMutation.isPending}
             type="submit"
           >
             {loginMutation.isPending ? "Signing In" : "Sign In"}
-          </button>
-        </form>
-      </section>
+          </Button>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   );
 }

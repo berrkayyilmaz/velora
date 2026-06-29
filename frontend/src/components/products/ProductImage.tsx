@@ -13,11 +13,13 @@ export function ProductImage({ imageUrl, title, aspectRatio = 0.8 }: ProductImag
 
   return (
     <View
-      className="w-full items-center justify-center overflow-hidden bg-neutral-100"
+      className="w-full items-center justify-center overflow-hidden bg-secondary dark:bg-secondary-dark"
       style={{ aspectRatio }}
     >
       {hasError ? (
-        <Text className="px-4 text-center text-sm text-neutral-500">Image unavailable</Text>
+        <Text className="px-4 text-center text-label text-muted-foreground dark:text-muted-foreground-dark">
+          Image unavailable
+        </Text>
       ) : (
         <Image
           accessibilityLabel={title}

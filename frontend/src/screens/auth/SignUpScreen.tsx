@@ -30,7 +30,7 @@ export function SignUpScreen() {
     <AuthScreenLayout title="Create Account">
       <View className="gap-4">
         {registerMutation.error !== null ? (
-          <Text className="text-sm text-red-700">
+          <Text className="text-label text-destructive dark:text-destructive-dark">
             {getApiErrorMessage(registerMutation.error)}
           </Text>
         ) : null}
@@ -76,10 +76,12 @@ export function SignUpScreen() {
       </View>
 
       <View className="mt-6 flex-row items-center justify-center gap-2">
-        <Text className="text-sm text-neutral-600">Already have an account?</Text>
+        <Text className="text-label text-muted-foreground dark:text-muted-foreground-dark">
+          Already have an account?
+        </Text>
         <Link href="/sign-in" asChild>
           <Pressable accessibilityRole="button">
-            <Text className="text-sm font-semibold text-neutral-900">Sign in</Text>
+            <Text className="text-label font-semibold text-primary dark:text-primary">Sign in</Text>
           </Pressable>
         </Link>
       </View>

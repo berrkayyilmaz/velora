@@ -8,8 +8,10 @@ type ScreenPlaceholderProps = {
 export function ScreenPlaceholder({ title }: ScreenPlaceholderProps) {
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <View className="flex-1 items-center justify-center bg-white px-6">
-        <Text className="text-xl font-semibold text-neutral-900">{title}</Text>
+      <View className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
+        <Text className="text-heading font-semibold text-foreground dark:text-foreground-dark">
+          {title}
+        </Text>
       </View>
     </SafeAreaView>
   );

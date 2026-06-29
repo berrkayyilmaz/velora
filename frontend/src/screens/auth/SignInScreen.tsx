@@ -29,7 +29,9 @@ export function SignInScreen() {
     <AuthScreenLayout title="Sign In">
       <View className="gap-4">
         {loginMutation.error !== null ? (
-          <Text className="text-sm text-red-700">{getApiErrorMessage(loginMutation.error)}</Text>
+          <Text className="text-label text-destructive dark:text-destructive-dark">
+            {getApiErrorMessage(loginMutation.error)}
+          </Text>
         ) : null}
 
         <FormField
@@ -57,7 +59,9 @@ export function SignInScreen() {
         <View className="items-end">
           <Link href="/forgot-password" asChild>
             <Pressable accessibilityRole="button">
-              <Text className="text-sm font-semibold text-neutral-900">Forgot password?</Text>
+              <Text className="text-label font-semibold text-primary dark:text-primary">
+                Forgot password?
+              </Text>
             </Pressable>
           </Link>
         </View>
@@ -70,10 +74,14 @@ export function SignInScreen() {
       </View>
 
       <View className="mt-6 flex-row items-center justify-center gap-2">
-        <Text className="text-sm text-neutral-600">New to Velora?</Text>
+        <Text className="text-label text-muted-foreground dark:text-muted-foreground-dark">
+          New to Velora?
+        </Text>
         <Link href="/sign-up" asChild>
           <Pressable accessibilityRole="button">
-            <Text className="text-sm font-semibold text-neutral-900">Create account</Text>
+            <Text className="text-label font-semibold text-primary dark:text-primary">
+              Create account
+            </Text>
           </Pressable>
         </Link>
       </View>

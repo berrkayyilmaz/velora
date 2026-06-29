@@ -1,15 +1,11 @@
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView, Text, View } from "react-native";
 
+import { Button } from "@/components/ui/Button";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { Input } from "@/components/ui/Input";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { Modal } from "@/components/ui/Modal";
 import { useProductFilterOptions } from "@/hooks/useProducts";
 import type { ProductFilters } from "@/types/product";
 import { getApiErrorMessage } from "@/utils/api-error";
@@ -72,32 +68,30 @@ function ChoiceGroup({
 
   return (
     <View className="gap-3">
-      <Text className="text-base font-semibold text-neutral-950">{title}</Text>
+      <Text className="text-body font-semibold text-foreground dark:text-foreground-dark">
+        {title}
+      </Text>
       <View className="flex-row flex-wrap gap-2">
         {choices.map((choice) => {
           const isSelected = selectedValue === choice.value;
 
           return (
-            <Pressable
-              accessibilityRole="button"
-              className={`min-h-10 flex-row items-center gap-2 rounded-md border px-3 py-2 ${
-                isSelected
-                  ? "border-neutral-950 bg-neutral-950"
-                  : "border-neutral-300 bg-white"
-              }`}
+            <Button
+              leftIcon={
+                showSwatch ? (
+                  <View
+                    className="h-4 w-4 rounded-full border border-border dark:border-border-dark"
+                    style={{ backgroundColor: getColorSwatch(choice.label) }}
+                  />
+                ) : undefined
+              }
               key={choice.value}
               onPress={() => onSelect(choice.value)}
+              size="sm"
+              variant={isSelected ? "primary" : "outline"}
             >
-              {showSwatch ? (
-                <View
-                  className="h-4 w-4 rounded-full border border-neutral-300"
-                  style={{ backgroundColor: getColorSwatch(choice.label) }}
-                />
-              ) : null}
-              <Text className={`text-sm ${isSelected ? "text-white" : "text-neutral-800"}`}>
-                {choice.label}
-              </Text>
-            </Pressable>
+              {choice.label}
+            </Button>
           );
         })}
       </View>
@@ -170,42 +164,35 @@ export function ProductFiltersModal({
   };
 
   const options = optionsQuery.data;
+  const footer =
+    optionsQuery.isPending || optionsQuery.isError ? undefined : (
+      <View className="flex-row gap-3">
+        <Button className="flex-1" onPress={clearFilters} size="lg" variant="outline">
+          Clear
+        </Button>
+        <Button className="flex-1" onPress={applyFilters} size="lg">
+          Apply
+        </Button>
+      </View>
+    );
 
   return (
     <Modal
-      animationType="slide"
-      onRequestClose={onClose}
-      presentationStyle="pageSheet"
+      footer={footer}
+      onClose={onClose}
+      presentation="full"
+      title="Filters"
       visible
     >
-      <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
-        <View className="h-14 flex-row items-center justify-between border-b border-neutral-200 px-5">
-          <Text className="text-lg font-semibold text-neutral-950">Filters</Text>
-          <Pressable accessibilityLabel="Close filters" accessibilityRole="button" onPress={onClose}>
-            <Text className="px-2 py-1 text-lg font-semibold text-neutral-800">X</Text>
-          </Pressable>
-        </View>
-
-        {optionsQuery.isPending ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color="#171717" />
-          </View>
-        ) : optionsQuery.isError ? (
-          <View className="flex-1 items-center justify-center gap-4 px-6">
-            <Text className="text-center text-sm text-red-700">
-              {getApiErrorMessage(optionsQuery.error)}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              className="h-11 items-center justify-center rounded-md bg-neutral-950 px-5"
-              onPress={() => void optionsQuery.refetch()}
-            >
-              <Text className="font-semibold text-white">Retry</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            <ScrollView contentContainerStyle={{ gap: 28, padding: 20 }}>
+      {optionsQuery.isPending ? (
+        <LoadingState label="Loading filters" />
+      ) : optionsQuery.isError ? (
+        <ErrorState
+          message={getApiErrorMessage(optionsQuery.error)}
+          onRetry={() => void optionsQuery.refetch()}
+        />
+      ) : (
+        <ScrollView contentContainerStyle={{ gap: 28, padding: 20 }}>
               <ChoiceGroup
                 choices={(options?.brands ?? []).map((brand) => ({
                   label: brand.name,
@@ -242,50 +229,33 @@ export function ProductFiltersModal({
               />
 
               <View className="gap-3">
-                <Text className="text-base font-semibold text-neutral-950">Price range</Text>
+                <Text className="text-body font-semibold text-foreground dark:text-foreground-dark">
+                  Price range
+                </Text>
                 <View className="flex-row gap-3">
-                  <TextInput
-                    className="h-12 flex-1 rounded-md border border-neutral-300 px-4 text-base text-neutral-950"
+                  <Input
+                    containerClassName="flex-1"
                     keyboardType="decimal-pad"
                     onChangeText={setMinPrice}
                     placeholder={options?.priceRange?.minPrice ?? "Minimum"}
-                    placeholderTextColor="#737373"
                     value={minPrice}
                   />
-                  <TextInput
-                    className="h-12 flex-1 rounded-md border border-neutral-300 px-4 text-base text-neutral-950"
+                  <Input
+                    containerClassName="flex-1"
                     keyboardType="decimal-pad"
                     onChangeText={setMaxPrice}
                     placeholder={options?.priceRange?.maxPrice ?? "Maximum"}
-                    placeholderTextColor="#737373"
                     value={maxPrice}
                   />
                 </View>
                 {priceError !== null ? (
-                  <Text className="text-sm text-red-700">{priceError}</Text>
+                  <Text className="text-label text-destructive dark:text-destructive-dark">
+                    {priceError}
+                  </Text>
                 ) : null}
               </View>
-            </ScrollView>
-
-            <View className="flex-row gap-3 border-t border-neutral-200 p-4">
-              <Pressable
-                accessibilityRole="button"
-                className="h-12 flex-1 items-center justify-center rounded-md border border-neutral-300 bg-white"
-                onPress={clearFilters}
-              >
-                <Text className="font-semibold text-neutral-900">Clear</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                className="h-12 flex-1 items-center justify-center rounded-md bg-neutral-950"
-                onPress={applyFilters}
-              >
-                <Text className="font-semibold text-white">Apply</Text>
-              </Pressable>
-            </View>
-          </>
-        )}
-      </SafeAreaView>
+        </ScrollView>
+      )}
     </Modal>
   );
 }

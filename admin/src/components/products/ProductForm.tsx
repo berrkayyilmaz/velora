@@ -1,5 +1,7 @@
 import { type FormEvent, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Input, Textarea } from "@/components/ui/input";
 import type { AdminProduct, AdminProductInput } from "@/types/admin-product";
 
 type ProductFormProps = {
@@ -23,9 +25,6 @@ type ProductFormState = {
   tags: string;
   isActive: boolean;
 };
-
-const inputClassName =
-  "mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring";
 
 function createInitialState(product?: AdminProduct): ProductFormState {
   return {
@@ -78,8 +77,8 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
     <form className="mt-5 grid gap-4 sm:grid-cols-2" onSubmit={submitProduct}>
       <label className="text-sm font-medium sm:col-span-2" htmlFor="product-title">
         Title
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="product-title"
           maxLength={200}
           onChange={(event) => setForm({ ...form, title: event.target.value })}
@@ -90,8 +89,8 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
 
       <label className="text-sm font-medium" htmlFor="product-brand-id">
         Brand ID
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="product-brand-id"
           onChange={(event) => setForm({ ...form, brandId: event.target.value })}
           pattern="[0-9a-fA-F-]{36}"
@@ -102,8 +101,8 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
 
       <label className="text-sm font-medium" htmlFor="product-category-id">
         Category ID
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="product-category-id"
           onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
           pattern="[0-9a-fA-F-]{36}"
@@ -114,8 +113,8 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
 
       <label className="text-sm font-medium" htmlFor="product-source-platform-id">
         Source Platform ID
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="product-source-platform-id"
           onChange={(event) => setForm({ ...form, sourcePlatformId: event.target.value })}
           pattern="[0-9a-fA-F-]{36}"
@@ -126,8 +125,8 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
 
       <label className="text-sm font-medium" htmlFor="product-price">
         Price
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="product-price"
           min="0"
           onChange={(event) => setForm({ ...form, price: event.target.value })}
@@ -140,8 +139,8 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
 
       <label className="text-sm font-medium sm:col-span-2" htmlFor="product-image-url">
         Image URL
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="product-image-url"
           onChange={(event) => setForm({ ...form, imageUrl: event.target.value })}
           required
@@ -152,8 +151,8 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
 
       <label className="text-sm font-medium sm:col-span-2" htmlFor="product-url">
         Product URL
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="product-url"
           onChange={(event) => setForm({ ...form, productUrl: event.target.value })}
           required
@@ -164,8 +163,8 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
 
       <label className="text-sm font-medium" htmlFor="product-color">
         Color
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="product-color"
           maxLength={100}
           onChange={(event) => setForm({ ...form, color: event.target.value })}
@@ -176,8 +175,8 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
 
       <label className="text-sm font-medium" htmlFor="product-available-colors">
         Available colors
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="product-available-colors"
           onChange={(event) => setForm({ ...form, availableColors: event.target.value })}
           placeholder="Black, White"
@@ -187,8 +186,8 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
 
       <label className="text-sm font-medium sm:col-span-2" htmlFor="product-description">
         Description
-        <textarea
-          className={inputClassName}
+        <Textarea
+          className="mt-1"
           id="product-description"
           maxLength={2000}
           onChange={(event) => setForm({ ...form, description: event.target.value })}
@@ -199,8 +198,8 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
 
       <label className="text-sm font-medium sm:col-span-2" htmlFor="product-tags">
         Tags
-        <input
-          className={inputClassName}
+        <Input
+          className="mt-1"
           id="product-tags"
           onChange={(event) => setForm({ ...form, tags: event.target.value })}
           placeholder="casual, summer"
@@ -218,21 +217,20 @@ export function ProductForm({ product, isSubmitting, onCancel, onSubmit }: Produ
       </label>
 
       <div className="flex gap-3 sm:col-span-2">
-        <button
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          disabled={isSubmitting}
+        <Button
+          isLoading={isSubmitting}
           type="submit"
         >
           {isSubmitting ? "Saving" : product === undefined ? "Create Product" : "Save Changes"}
-        </button>
-        <button
-          className="rounded-md border border-border px-4 py-2 text-sm font-medium"
+        </Button>
+        <Button
           disabled={isSubmitting}
           onClick={onCancel}
           type="button"
+          variant="outline"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

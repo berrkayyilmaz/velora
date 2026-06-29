@@ -1,12 +1,19 @@
-import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
+import { Heart } from "lucide-react-native";
+import { FlatList, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { WishlistItemCard } from "@/components/wishlist/WishlistItemCard";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { useRemoveWishlistItem, useWishlist } from "@/hooks/useWishlist";
 import type { WishlistItem } from "@/types/wishlist";
 import { getApiErrorMessage } from "@/utils/api-error";
 
 export function WishlistScreen() {
+  const colors = useThemeColors();
   const wishlistQuery = useWishlist();
   const removeWishlistItem = useRemoveWishlistItem("wishlist");
   const items = wishlistQuery.data?.data.items ?? [];
@@ -22,29 +29,16 @@ export function WishlistScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
-      <View className="h-16 justify-center border-b border-neutral-200 px-4">
-        <Text className="text-2xl font-semibold text-neutral-950">Wishlist</Text>
-      </View>
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+      <ScreenHeader title="Wishlist" />
 
       {wishlistQuery.isPending ? (
-        <View className="flex-1 items-center justify-center gap-3">
-          <ActivityIndicator color="#171717" />
-          <Text className="text-sm text-neutral-600">Loading wishlist</Text>
-        </View>
+        <LoadingState label="Loading wishlist" />
       ) : wishlistQuery.isError ? (
-        <View className="flex-1 items-center justify-center gap-4 px-6">
-          <Text className="text-center text-sm text-red-700">
-            {getApiErrorMessage(wishlistQuery.error)}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            className="h-11 items-center justify-center rounded-md bg-neutral-950 px-5"
-            onPress={() => void wishlistQuery.refetch()}
-          >
-            <Text className="font-semibold text-white">Retry</Text>
-          </Pressable>
-        </View>
+        <ErrorState
+          message={getApiErrorMessage(wishlistQuery.error)}
+          onRetry={() => void wishlistQuery.refetch()}
+        />
       ) : (
         <FlatList
           contentContainerStyle={{
@@ -54,18 +48,15 @@ export function WishlistScreen() {
           data={items}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
-            <View className="flex-1 items-center justify-center px-6">
-              <Text className="text-center text-base font-medium text-neutral-950">
-                Your wishlist is empty.
-              </Text>
-              <Text className="mt-2 text-center text-sm text-neutral-600">
-                Save products from their detail page to find them here.
-              </Text>
-            </View>
+            <EmptyState
+              description="Save products from their detail page to find them here."
+              icon={<Heart color={colors.mutedForeground} size={30} />}
+              title="Your wishlist is empty"
+            />
           }
           ListHeaderComponent={
             removeWishlistItem.isError ? (
-              <Text className="pt-4 text-center text-sm text-red-700">
+              <Text className="pt-4 text-center text-label text-destructive dark:text-destructive-dark">
                 {getApiErrorMessage(removeWishlistItem.error)}
               </Text>
             ) : null

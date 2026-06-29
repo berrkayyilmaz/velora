@@ -232,6 +232,8 @@ npm.cmd run validate
 ```
 
 Manual MVP smoke testing is documented in [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md).
+Shared mobile and admin UI rules are documented in
+[`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
 
 ## Current MVP Status
 

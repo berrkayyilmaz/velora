@@ -1,13 +1,21 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Pencil, Trash2 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FormField } from "@/components/forms/FormField";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { OutfitProductRow } from "@/components/outfits/OutfitProductRow";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import {
   useDeleteOutfit,
   useOutfit,
@@ -15,6 +23,7 @@ import {
   useUpdateOutfit
 } from "@/hooks/useOutfits";
 import { useRetailerRedirect } from "@/hooks/useRetailerRedirect";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import {
   outfitNameFormSchema,
   type OutfitNameFormValues
@@ -24,6 +33,7 @@ import { getApiErrorMessage } from "@/utils/api-error";
 
 export function OutfitDetailScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
   const params = useLocalSearchParams<{ outfitId?: string | string[] }>();
   const outfitId = Array.isArray(params.outfitId) ? params.outfitId[0] : params.outfitId;
   const outfitQuery = useOutfit(outfitId);
@@ -106,49 +116,27 @@ export function OutfitDetailScreen() {
       retailerDisabled={retailerRedirectMutation.isPending}
     />
   );
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/outfits");
+    }
+  };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
-      <View className="h-14 flex-row items-center border-b border-neutral-200 px-3">
-        <Pressable
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          className="h-11 w-11 items-center justify-center"
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace("/products");
-            }
-          }}
-        >
-          <Text className="text-2xl text-neutral-900">{"<"}</Text>
-        </Pressable>
-        <Text className="ml-2 text-lg font-semibold text-neutral-950">Outfit</Text>
-      </View>
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+      <ScreenHeader onBack={goBack} title="Outfit" />
 
       {outfitQuery.isPending ? (
-        <View className="flex-1 items-center justify-center gap-3">
-          <ActivityIndicator color="#171717" />
-          <Text className="text-sm text-neutral-600">Loading outfit</Text>
-        </View>
+        <LoadingState label="Loading outfit" />
       ) : outfitQuery.isError ? (
-        <View className="flex-1 items-center justify-center gap-4 px-6">
-          <Text className="text-center text-sm text-red-700">
-            {getApiErrorMessage(outfitQuery.error)}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            className="h-11 items-center justify-center rounded-md bg-neutral-950 px-5"
-            onPress={() => void outfitQuery.refetch()}
-          >
-            <Text className="font-semibold text-white">Retry</Text>
-          </Pressable>
-        </View>
+        <ErrorState
+          message={getApiErrorMessage(outfitQuery.error)}
+          onRetry={() => void outfitQuery.refetch()}
+        />
       ) : outfitQuery.data === undefined ? (
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-center text-base text-neutral-600">Outfit not found.</Text>
-        </View>
+        <EmptyState title="Outfit not found" />
       ) : (
         <FlatList
           contentContainerStyle={{
@@ -159,18 +147,17 @@ export function OutfitDetailScreen() {
           data={outfitQuery.data.products}
           keyExtractor={(product) => product.id}
           ListEmptyComponent={
-            <View className="flex-1 items-center justify-center px-6 py-12">
-              <Text className="text-center text-base text-neutral-600">
-                This outfit has no products yet.
-              </Text>
-            </View>
+            <EmptyState
+              description="Add products from a product detail page."
+              title="This outfit has no products yet"
+            />
           }
           ListHeaderComponent={
-            <View className="gap-5 border-b border-neutral-200 py-5">
+            <View className="gap-5 border-b border-border py-5 dark:border-border-dark">
               {isEditing ? (
                 <View className="gap-3">
                   {updateOutfitMutation.isError ? (
-                    <Text className="text-sm text-red-700">
+                    <Text className="text-label text-destructive dark:text-destructive-dark">
                       {getApiErrorMessage(updateOutfitMutation.error)}
                     </Text>
                   ) : null}
@@ -181,110 +168,118 @@ export function OutfitDetailScreen() {
                     loadingLabel="Saving Name"
                     onPress={saveName}
                   />
-                  <Pressable
-                    accessibilityRole="button"
-                    className="h-11 items-center justify-center rounded-md border border-neutral-300"
+                  <Button
                     disabled={updateOutfitMutation.isPending}
                     onPress={() => {
                       reset({ name: outfitQuery.data.name });
                       setIsEditing(false);
                     }}
+                    variant="outline"
                   >
-                    <Text className="font-semibold text-neutral-900">Cancel</Text>
-                  </Pressable>
+                    Cancel
+                  </Button>
                 </View>
               ) : (
                 <View className="gap-2">
-                  <Text className="text-2xl font-semibold text-neutral-950">
+                  <Text className="text-title font-semibold text-foreground dark:text-foreground-dark">
                     {outfitQuery.data.name}
                   </Text>
-                  <Text className="text-sm text-neutral-600">
+                  <Text className="text-label text-muted-foreground dark:text-muted-foreground-dark">
                     {outfitQuery.data.productCount}{" "}
                     {outfitQuery.data.productCount === 1 ? "product" : "products"}
                   </Text>
                   {outfitQuery.data.includedCategories.length > 0 ? (
-                    <Text className="text-sm text-neutral-600">
-                      {outfitQuery.data.includedCategories
-                        .map((category) => category.name)
-                        .join(", ")}
-                    </Text>
+                    <View className="flex-row flex-wrap gap-2">
+                      {outfitQuery.data.includedCategories.map((category) => (
+                        <Badge key={category.id} variant="outline">
+                          {category.name}
+                        </Badge>
+                      ))}
+                    </View>
                   ) : null}
                 </View>
               )}
 
               {!isEditing ? (
                 <View className="flex-row gap-3">
-                  <Pressable
-                    accessibilityRole="button"
-                    className="h-11 flex-1 items-center justify-center rounded-md border border-neutral-300"
+                  <Button
+                    className="flex-1"
+                    leftIcon={<Pencil color={colors.foreground} size={17} />}
                     onPress={() => setIsEditing(true)}
+                    variant="outline"
                   >
-                    <Text className="font-semibold text-neutral-900">Rename</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    className="h-11 flex-1 items-center justify-center rounded-md border border-red-300"
+                    Rename
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    leftIcon={<Trash2 color={colors.destructive} size={17} />}
                     onPress={() => setIsConfirmingDelete(true)}
+                    variant="destructive-outline"
                   >
-                    <Text className="font-semibold text-red-700">Delete</Text>
-                  </Pressable>
+                    Delete
+                  </Button>
                 </View>
               ) : null}
 
               {isConfirmingDelete ? (
-                <View className="gap-3 rounded-md border border-red-200 p-4">
-                  <Text className="text-sm text-red-800">Delete this outfit permanently?</Text>
+                <Card className="gap-3 border-destructive p-4 dark:border-destructive-dark">
+                  <Text className="text-label text-destructive dark:text-destructive-dark">
+                    Delete this outfit permanently?
+                  </Text>
                   {deleteOutfitMutation.isError ? (
-                    <Text className="text-sm text-red-700">
+                    <Text className="text-label text-destructive dark:text-destructive-dark">
                       {getApiErrorMessage(deleteOutfitMutation.error)}
                     </Text>
                   ) : null}
                   <View className="flex-row gap-3">
-                    <Pressable
-                      accessibilityRole="button"
-                      className="h-10 flex-1 items-center justify-center rounded-md border border-neutral-300"
+                    <Button
+                      className="flex-1"
                       disabled={deleteOutfitMutation.isPending}
                       onPress={() => setIsConfirmingDelete(false)}
+                      size="sm"
+                      variant="outline"
                     >
-                      <Text className="font-semibold text-neutral-900">Cancel</Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      className="h-10 flex-1 items-center justify-center rounded-md bg-red-700"
-                      disabled={deleteOutfitMutation.isPending}
+                      Cancel
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      isLoading={deleteOutfitMutation.isPending}
+                      loadingLabel="Deleting"
                       onPress={deleteCurrentOutfit}
+                      size="sm"
+                      variant="destructive"
                     >
-                      <Text className="font-semibold text-white">
-                        {deleteOutfitMutation.isPending ? "Deleting" : "Confirm Delete"}
-                      </Text>
-                    </Pressable>
+                      Confirm Delete
+                    </Button>
                   </View>
-                </View>
+                </Card>
               ) : null}
 
               {outfitQuery.data.missingCategoryHints.length > 0 ? (
-                <View className="gap-1">
+                <View className="flex-row flex-wrap gap-2">
                   {outfitQuery.data.missingCategoryHints.map((hint) => (
-                    <Text className="text-sm text-neutral-600" key={hint}>
+                    <Badge key={hint} variant="accent">
                       {hint}
-                    </Text>
+                    </Badge>
                   ))}
                 </View>
               ) : null}
 
               {removeProductMutation.isError ? (
-                <Text className="text-sm text-red-700">
+                <Text className="text-label text-destructive dark:text-destructive-dark">
                   {getApiErrorMessage(removeProductMutation.error)}
                 </Text>
               ) : null}
 
               {retailerRedirectMutation.isError ? (
-                <Text className="text-sm text-red-700">
+                <Text className="text-label text-destructive dark:text-destructive-dark">
                   {getApiErrorMessage(retailerRedirectMutation.error)}
                 </Text>
               ) : null}
 
-              <Text className="text-lg font-semibold text-neutral-950">Products</Text>
+              <Text className="text-heading font-semibold text-foreground dark:text-foreground-dark">
+                Products
+              </Text>
             </View>
           }
           renderItem={renderProduct}

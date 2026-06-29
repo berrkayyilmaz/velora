@@ -4,6 +4,10 @@ import { useState } from "react";
 import { PaginationControls } from "@/components/PaginationControls";
 import { ProductForm } from "@/components/products/ProductForm";
 import { ProductImportPanel } from "@/components/products/ProductImportPanel";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   useAdminProduct,
   useAdminProducts,
@@ -33,28 +37,35 @@ function ProductRow({
       <td className="px-3 py-3">{product.price}</td>
       <td className="px-3 py-3">{product.color}</td>
       <td className="px-3 py-3">{product.sourcePlatform.name}</td>
-      <td className="px-3 py-3">{product.isActive ? "Active" : "Inactive"}</td>
+      <td className="px-3 py-3">
+        <Badge variant={product.isActive ? "success" : "outline"}>
+          {product.isActive ? "Active" : "Inactive"}
+        </Badge>
+      </td>
       <td className="px-3 py-3">
         <div className="flex gap-2">
-          <button
+          <Button
             aria-label={`Edit ${product.title}`}
-            className="inline-flex size-9 items-center justify-center rounded-md border border-border"
             onClick={() => onEdit(product.id)}
+            size="icon"
             title={`Edit ${product.title}`}
             type="button"
+            variant="outline"
           >
             <Pencil aria-hidden="true" size={16} />
-          </button>
-          <button
+          </Button>
+          <Button
             aria-label={`Deactivate ${product.title}`}
-            className="inline-flex size-9 items-center justify-center rounded-md border border-border text-destructive disabled:opacity-50"
+            className="text-destructive"
             disabled={!product.isActive || isDeactivating}
             onClick={() => onDeactivate(product)}
+            size="icon"
             title={`Deactivate ${product.title}`}
             type="button"
+            variant="outline"
           >
             <Archive aria-hidden="true" size={16} />
-          </button>
+          </Button>
         </div>
       </td>
     </tr>
@@ -150,22 +161,21 @@ export function ProductsScreen() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Products</h1>
         <div className="flex gap-3">
-          <button
-            className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium"
+          <Button
             onClick={openImportPanel}
             type="button"
+            variant="outline"
           >
             <Upload aria-hidden="true" size={17} />
             Import JSON
-          </button>
-          <button
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          </Button>
+          <Button
             onClick={openCreateForm}
             type="button"
           >
             <Plus aria-hidden="true" size={17} />
             Create Product
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -195,13 +205,14 @@ export function ProductsScreen() {
           ) : formMode === "edit" && productQuery.isError ? (
             <div className="mt-4" role="alert">
               <p className="text-destructive">{getApiErrorMessage(productQuery.error)}</p>
-              <button
-                className="mt-3 rounded-md border border-border px-3 py-2"
+              <Button
+                className="mt-3"
                 onClick={() => void productQuery.refetch()}
                 type="button"
+                variant="outline"
               >
                 Retry
-              </button>
+              </Button>
             </div>
           ) : formMode === "create" || productQuery.data !== undefined ? (
             <>
@@ -235,20 +246,28 @@ export function ProductsScreen() {
         </div>
 
         {productsQuery.isPending ? (
-          <p className="mt-4 text-muted-foreground">Loading products.</p>
+          <div aria-label="Loading products" className="mt-4 grid gap-2">
+            <Skeleton className="h-12" />
+            <Skeleton className="h-12" />
+            <Skeleton className="h-12" />
+          </div>
         ) : productsQuery.isError ? (
           <div className="mt-4" role="alert">
             <p className="text-destructive">{getApiErrorMessage(productsQuery.error)}</p>
-            <button
-              className="mt-3 rounded-md border border-border px-3 py-2"
+            <Button
+              className="mt-3"
               onClick={() => void productsQuery.refetch()}
               type="button"
+              variant="outline"
             >
               Retry
-            </button>
+            </Button>
           </div>
         ) : productsQuery.data.data.items.length === 0 ? (
-          <p className="mt-4 text-muted-foreground">No products found.</p>
+          <EmptyState
+            className="mt-4 border-y border-border"
+            title="No products found"
+          />
         ) : (
           <>
             <div className="mt-4 overflow-x-auto">

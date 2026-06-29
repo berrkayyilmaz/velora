@@ -16,7 +16,7 @@ export function OutfitCard({ outfit }: OutfitCardProps) {
     <Pressable
       accessibilityLabel={`View ${outfit.name}`}
       accessibilityRole="button"
-      className="flex-row gap-4 border-b border-neutral-200 py-4"
+      className="flex-row gap-4 border-b border-border py-4 dark:border-border-dark"
       onPress={() =>
         router.push({
           pathname: "/outfits/[outfitId]",
@@ -24,10 +24,12 @@ export function OutfitCard({ outfit }: OutfitCardProps) {
         })
       }
     >
-      <View className="w-24 overflow-hidden rounded-md">
+      <View className="w-24 overflow-hidden rounded-card">
         {previewProduct === undefined ? (
-          <View className="aspect-square items-center justify-center bg-neutral-100 px-2">
-            <Text className="text-center text-xs text-neutral-500">No products</Text>
+          <View className="aspect-square items-center justify-center bg-secondary px-2 dark:bg-secondary-dark">
+            <Text className="text-center text-caption text-muted-foreground dark:text-muted-foreground-dark">
+              No products
+            </Text>
           </View>
         ) : (
           <ProductImage
@@ -39,10 +41,13 @@ export function OutfitCard({ outfit }: OutfitCardProps) {
       </View>
 
       <View className="flex-1 justify-center gap-2">
-        <Text className="text-lg font-semibold text-neutral-950" numberOfLines={2}>
+        <Text
+          className="text-heading font-semibold text-foreground dark:text-foreground-dark"
+          numberOfLines={2}
+        >
           {outfit.name}
         </Text>
-        <Text className="text-sm text-neutral-600">
+        <Text className="text-label text-muted-foreground dark:text-muted-foreground-dark">
           {outfit.productCount} {outfit.productCount === 1 ? "product" : "products"}
         </Text>
       </View>

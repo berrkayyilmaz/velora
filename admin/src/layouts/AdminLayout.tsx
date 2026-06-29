@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { queryClient } from "@/config/query-client";
 import { useAdminAuth } from "@/store/useAdminAuth";
 
@@ -43,15 +45,16 @@ function AdminAccount({ email, onLogout }: AdminAccountProps) {
           {email ?? "Administrator"}
         </p>
       </div>
-      <button
+      <Button
         aria-label="Log out"
-        className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
         onClick={onLogout}
+        size="icon"
         title="Log out"
         type="button"
+        variant="outline"
       >
         <LogOut aria-hidden="true" size={17} />
-      </button>
+      </Button>
     </div>
   );
 }
@@ -103,6 +106,9 @@ export function AdminLayout() {
         </nav>
 
         <div className="border-t border-border p-4">
+          <div className="mb-3 flex justify-end">
+            <ThemeToggle />
+          </div>
           <AdminAccount email={session?.adminUser.email} onLogout={logout} />
         </div>
       </aside>
