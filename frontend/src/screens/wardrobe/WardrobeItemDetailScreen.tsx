@@ -19,8 +19,7 @@ import { useThemeColors } from "@/hooks/useThemeColors";
 import { useDeleteWardrobeItem, useWardrobeItem } from "@/hooks/useWardrobe";
 import {
   useDeleteWardrobeMedia,
-  useUploadWardrobeMedia,
-  useWardrobeMedia
+  useUploadWardrobeMedia
 } from "@/hooks/useWardrobeMedia";
 import type { WardrobeMediaType } from "@/types/wardrobe-media";
 import type { WardrobeItemStatus } from "@/types/wardrobe";
@@ -103,7 +102,6 @@ export function WardrobeItemDetailScreen() {
   const notice = Array.isArray(params.notice) ? params.notice[0] : params.notice;
   const wardrobeItemQuery = useWardrobeItem(wardrobeItemId);
   const deleteMutation = useDeleteWardrobeItem();
-  const mediaQuery = useWardrobeMedia(wardrobeItemId);
   const uploadMediaMutation = useUploadWardrobeMedia();
   const deleteMediaMutation = useDeleteWardrobeMedia();
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -190,7 +188,7 @@ export function WardrobeItemDetailScreen() {
   };
 
   const deleteCurrentMedia = () => {
-    if (wardrobeItemId === undefined || mediaQuery.data === null) {
+    if (wardrobeItemId === undefined || wardrobeItemQuery.data?.primaryMedia == null) {
       return;
     }
 
@@ -198,7 +196,7 @@ export function WardrobeItemDetailScreen() {
     deleteMediaMutation.mutate(
       {
         wardrobeItemId,
-        mediaId: mediaQuery.data.id
+        mediaId: wardrobeItemQuery.data.primaryMedia.id
       },
       {
         onSuccess: () => setIsConfirmingMediaDelete(false)
@@ -254,13 +252,7 @@ export function WardrobeItemDetailScreen() {
               Image
             </Text>
 
-            {mediaQuery.isPending ? (
-              <View className="h-48">
-                <LoadingState label="Loading image" />
-              </View>
-            ) : mediaQuery.isError ? (
-              <ErrorState message={getApiErrorMessage(mediaQuery.error)} />
-            ) : mediaQuery.data === null ? (
+            {wardrobeItemQuery.data.primaryMedia === null ? (
               <EmptyState
                 action={
                   <Button
@@ -280,14 +272,14 @@ export function WardrobeItemDetailScreen() {
               <Card className="overflow-hidden">
                 <ProductImage
                   aspectRatio={1}
-                  imageUrl={mediaQuery.data.url}
+                  imageUrl={wardrobeItemQuery.data.primaryMedia.url}
                   title={wardrobeItemQuery.data.title}
                 />
                 <View className="gap-3 p-4">
                   <View className="flex-row items-center justify-between gap-3">
                     <Badge variant="success">Ready</Badge>
                     <Text className="text-caption text-muted-foreground dark:text-muted-foreground-dark">
-                      {mediaQuery.data.mediaType}
+                      {wardrobeItemQuery.data.primaryMedia.mediaType}
                     </Text>
                   </View>
                   <Button

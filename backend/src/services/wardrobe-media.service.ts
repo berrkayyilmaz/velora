@@ -31,7 +31,7 @@ function toApiStatus(status: WardrobeItemMediaStatus): WardrobeMediaResponseData
   return status.toLowerCase() as WardrobeMediaResponseData["status"];
 }
 
-function toWardrobeMedia(
+export function toWardrobeMedia(
   media: WardrobeMediaRecord,
   storage: WardrobeMediaStorage
 ): WardrobeMediaResponseData {

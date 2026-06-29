@@ -1,5 +1,12 @@
-import { Prisma, type PrismaClient, WardrobeItemStatus } from "@prisma/client";
+import {
+  Prisma,
+  type PrismaClient,
+  WardrobeItemMediaPurpose,
+  WardrobeItemMediaStatus,
+  WardrobeItemStatus
+} from "@prisma/client";
 
+import { wardrobeMediaSelect } from "./wardrobe-media.repository.js";
 import type {
   CreateWardrobeItemRequest,
   UpdateWardrobeItemRequest,
@@ -22,6 +29,18 @@ const wardrobeItemSelect = {
       name: true,
       slug: true
     }
+  },
+  media: {
+    where: {
+      purpose: WardrobeItemMediaPurpose.PRIMARY,
+      status: WardrobeItemMediaStatus.READY,
+      deletedAt: null
+    },
+    orderBy: {
+      createdAt: Prisma.SortOrder.desc
+    },
+    take: 1,
+    select: wardrobeMediaSelect
   }
 } satisfies Prisma.WardrobeItemSelect;
 

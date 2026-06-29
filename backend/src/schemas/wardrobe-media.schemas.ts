@@ -13,7 +13,7 @@ export const wardrobeMediaParamsSchema = z.object({
   mediaId: uuidSchema
 });
 
-const wardrobeMediaSchema = z.object({
+export const wardrobeMediaSchema = z.object({
   id: uuidSchema,
   wardrobeItemId: uuidSchema,
   mediaType: wardrobeMediaTypeSchema,

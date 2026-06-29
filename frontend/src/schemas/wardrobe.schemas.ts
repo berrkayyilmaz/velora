@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { wardrobeMediaSchema } from "@/schemas/wardrobe-media.schemas";
+
 const uuidSchema = z.string().uuid();
 const optionalNullableText = (maxLength: number) =>
   z.string().trim().min(1).max(maxLength).nullable().optional();
@@ -73,6 +75,7 @@ export const wardrobeItemSchema = z.object({
   brandLabel: z.string().nullable(),
   notes: z.string().nullable(),
   status: wardrobeItemStatusSchema,
+  primaryMedia: wardrobeMediaSchema.nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 });

@@ -10,7 +10,7 @@ import type {
   WardrobeMediaUploadInput
 } from "@/types/wardrobe-media";
 
-function resolveMediaUrl(url: string): string {
+export function resolveMediaUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) {
     return url;
   }

@@ -20,6 +20,8 @@ import type {
   WardrobeListQuery,
   WardrobeListResponse
 } from "../schemas/wardrobe.schemas.js";
+import type { WardrobeMediaStorage } from "./storage/wardrobe-media-storage.js";
+import { toWardrobeMedia } from "./wardrobe-media.service.js";
 
 export class WardrobeServiceError extends Error {
   constructor(
@@ -36,7 +38,10 @@ function toApiStatus(status: WardrobeItemStatus): WardrobeItemResponseData["stat
   return status.toLowerCase() as WardrobeItemResponseData["status"];
 }
 
-function toWardrobeItem(item: WardrobeItemRecord): WardrobeItemResponseData {
+function toWardrobeItem(
+  item: WardrobeItemRecord,
+  storage: WardrobeMediaStorage
+): WardrobeItemResponseData {
   return {
     id: item.id,
     title: item.title,
@@ -45,6 +50,7 @@ function toWardrobeItem(item: WardrobeItemRecord): WardrobeItemResponseData {
     brandLabel: item.brandLabel,
     notes: item.notes,
     status: toApiStatus(item.status),
+    primaryMedia: item.media[0] === undefined ? null : toWardrobeMedia(item.media[0], storage),
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString()
   };
@@ -82,6 +88,7 @@ async function recordWardrobeAnalyticsEvent(
 
 export async function listWardrobeItems(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   query: WardrobeListQuery
 ): Promise<WardrobeListResponse> {
@@ -89,7 +96,7 @@ export async function listWardrobeItems(
 
   return {
     data: {
-      items: items.map(toWardrobeItem)
+      items: items.map((item) => toWardrobeItem(item, storage))
     },
     meta: {
       pagination: {
@@ -110,6 +117,7 @@ export async function listWardrobeItems(
 
 export async function createWardrobeItem(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   input: CreateWardrobeItemRequest
 ): Promise<WardrobeItemResponse> {
@@ -127,12 +135,13 @@ export async function createWardrobeItem(
   });
 
   return {
-    data: toWardrobeItem(item)
+    data: toWardrobeItem(item, storage)
   };
 }
 
 export async function getWardrobeItem(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   wardrobeItemId: string
 ): Promise<WardrobeItemResponse> {
@@ -143,12 +152,13 @@ export async function getWardrobeItem(
   }
 
   return {
-    data: toWardrobeItem(item)
+    data: toWardrobeItem(item, storage)
   };
 }
 
 export async function updateWardrobeItem(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   wardrobeItemId: string,
   input: UpdateWardrobeItemRequest
@@ -174,7 +184,7 @@ export async function updateWardrobeItem(
   });
 
   return {
-    data: toWardrobeItem(item)
+    data: toWardrobeItem(item, storage)
   };
 }
 

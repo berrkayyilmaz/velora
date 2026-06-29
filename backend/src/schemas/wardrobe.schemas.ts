@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { wardrobeMediaSchema } from "./wardrobe-media.schemas.js";
+
 const uuidSchema = z.string().uuid();
 const wardrobeItemTitleSchema = z.string().trim().min(1).max(120);
 const wardrobeItemStatusSchema = z.enum(["draft", "active", "archived", "deletion_pending"]);
@@ -22,6 +24,7 @@ const wardrobeItemSchema = z.object({
   brandLabel: z.string().nullable(),
   notes: z.string().nullable(),
   status: wardrobeItemStatusSchema,
+  primaryMedia: wardrobeMediaSchema.nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 });

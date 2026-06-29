@@ -1,7 +1,7 @@
 import { WardrobeItemMediaPurpose, WardrobeItemMediaStatus } from "@prisma/client";
 import type { Prisma, PrismaClient } from "@prisma/client";
 
-const wardrobeMediaSelect = {
+export const wardrobeMediaSelect = {
   id: true,
   wardrobeItemId: true,
   storageKey: true,

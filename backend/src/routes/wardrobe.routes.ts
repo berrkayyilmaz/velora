@@ -62,6 +62,7 @@ const wardrobeRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const response = await listWardrobeItems(
         app.prisma,
+        app.wardrobeMediaStorage,
         getAuthenticatedUserId(request),
         parsedQuery.data
       );
@@ -82,6 +83,7 @@ const wardrobeRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const response = await createWardrobeItem(
         app.prisma,
+        app.wardrobeMediaStorage,
         getAuthenticatedUserId(request),
         parsedBody.data
       );
@@ -102,6 +104,7 @@ const wardrobeRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const response = await getWardrobeItem(
         app.prisma,
+        app.wardrobeMediaStorage,
         getAuthenticatedUserId(request),
         parsedParams.data.id
       );
@@ -128,6 +131,7 @@ const wardrobeRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const response = await updateWardrobeItem(
         app.prisma,
+        app.wardrobeMediaStorage,
         getAuthenticatedUserId(request),
         parsedParams.data.id,
         parsedBody.data
