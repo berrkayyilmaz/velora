@@ -1,8 +1,8 @@
 # Velora MVP REST API Specification
 
-Version: 1.0  
-Status: Draft  
-Date: 2026-06-15  
+Version: 1.1<br>
+Status: Draft<br>
+Date: 2026-06-29<br>
 Source: `docs/PRD.md`, `docs/ARCHITECTURE.md`, and `docs/DATABASE.md`
 
 ## 1. Purpose
@@ -29,6 +29,10 @@ The API supports the approved MVP scope:
 - Internal admin analytics
 
 The API intentionally excludes AI virtual try-on, AI stylist recommendations, checkout, payments, order tracking, social features, public web app APIs, partner dashboards, and advanced recommendation systems.
+
+Section 17 contains non-contract API planning for post-MVP Phase 2 Digital Wardrobe and
+Phase 3 Virtual Try-On. It does not add endpoints to the current backend and does not change
+the MVP `/api/v1` contract.
 
 ## 2. API Conventions
 
@@ -440,3 +444,148 @@ The API must not include MVP endpoints for:
 - Revenue reporting
 - Affiliate management tools
 - Public web app APIs
+
+## 17. Post-MVP API Planning
+
+### 17.1 Status And Compatibility Rules
+
+The endpoints and shapes in this section are planning candidates, not approved implementation
+contracts.
+
+- Existing MVP endpoints remain unchanged.
+- Existing `/api/v1/outfits/:outfitId/products` endpoints continue to mean catalog products.
+- Phase 2 additions should be additive where practical.
+- If mixed outfit responses cannot remain backward compatible, they should use a new response
+  shape or API version rather than silently changing `ProductSummary` arrays.
+- Every wardrobe and try-on endpoint requires user authentication.
+- All wardrobe, outfit, media, and try-on ownership must be verified server-side.
+
+### 17.2 Phase 2 Planned Data Shapes
+
+#### WardrobeItem
+
+| Field | Purpose |
+| --- | --- |
+| `id` | Wardrobe item ID. |
+| `title` | User-provided item name. |
+| `category` | Category summary. |
+| `color` | Optional primary color. |
+| `brandLabel` | Optional free-text brand label. |
+| `notes` | Optional private notes. |
+| `status` | Active or archived. |
+| `media` | Private media summaries with short-lived read URLs. |
+| `createdAt` | Creation timestamp. |
+| `updatedAt` | Last update timestamp. |
+
+Wardrobe responses must not expose object-storage keys, upload credentials, or another user's
+records.
+
+#### MixedOutfitItem
+
+Outfit items should use a discriminator:
+
+| Field | Purpose |
+| --- | --- |
+| `type` | `catalog_product` or `wardrobe_item`. |
+| `id` | Outfit relationship ID or stable item identifier selected during contract design. |
+| `catalogProduct` | `ProductSummary` when type is `catalog_product`; otherwise absent. |
+| `wardrobeItem` | Wardrobe item summary when type is `wardrobe_item`; otherwise absent. |
+| `addedAt` | Timestamp when the item was added to the outfit. |
+
+Exactly one source payload must be present. Clients must not infer item type from missing
+retailer or price fields.
+
+### 17.3 Phase 2 Candidate Wardrobe Endpoints
+
+| Method | Candidate Path | Purpose | Main Planning Rules |
+| --- | --- | --- | --- |
+| GET | `/api/v1/wardrobe/items` | List the authenticated user's wardrobe. | Support conservative pagination and optional category, color, and status filters. Return only owned records. |
+| POST | `/api/v1/wardrobe/items` | Create wardrobe item metadata. | Require title and category. Do not require price, retailer, source platform, or product URL. |
+| GET | `/api/v1/wardrobe/items/:wardrobeItemId` | Get wardrobe item detail. | Item must belong to authenticated user. |
+| PATCH | `/api/v1/wardrobe/items/:wardrobeItemId` | Edit wardrobe item metadata or archive status. | Item must belong to authenticated user. Validate category and user-entered fields. |
+| DELETE | `/api/v1/wardrobe/items/:wardrobeItemId` | Delete or schedule deletion of a wardrobe item. | Define behavior for outfit references and media cleanup before implementation. |
+| POST | `/api/v1/wardrobe/items/:wardrobeItemId/media/upload-request` | Request a private media upload. | Validate ownership, MIME type, file size, and media purpose. Return short-lived upload authorization only. |
+| POST | `/api/v1/wardrobe/items/:wardrobeItemId/media/confirm` | Confirm and validate an uploaded object. | Object must match the authorized user, item, size, and type before media becomes ready. |
+| DELETE | `/api/v1/wardrobe/items/:wardrobeItemId/media/:mediaId` | Remove wardrobe media. | Media must belong to item and user. Trigger storage deletion. |
+
+The upload-request/confirm split is preferred because direct object-storage uploads should
+not create trusted database media records before validation.
+
+### 17.4 Phase 2 Candidate Outfit Extensions
+
+| Method | Candidate Path | Purpose | Main Planning Rules |
+| --- | --- | --- | --- |
+| POST | `/api/v1/outfits/:outfitId/wardrobe-items` | Add owned wardrobe item to outfit. | Outfit and wardrobe item must belong to the same authenticated user. Prevent duplicate wardrobe item relationships. |
+| DELETE | `/api/v1/outfits/:outfitId/wardrobe-items/:wardrobeItemId` | Remove wardrobe item from outfit. | Outfit must belong to user and item must be present. |
+| GET | `/api/v1/outfits/:outfitId` or versioned equivalent | Return mixed outfit detail. | Return an explicit discriminated item collection. Preserve current product-only fields during a compatibility period if practical. |
+
+Creating an outfit with both sources may later accept separate `productIds` and
+`wardrobeItemIds`, or a discriminated `items` array. The final choice should be made with a
+versioning plan and must not reinterpret the existing MVP `productIds` field.
+
+### 17.5 Phase 3 Planned Data Shapes
+
+#### TryOnProfile
+
+| Field | Purpose |
+| --- | --- |
+| `id` | Try-on profile ID. |
+| `status` | Active, disabled, or deletion pending. |
+| `currentConsent` | Current consent version and purpose summary; no policy text duplication. |
+| `createdAt` | Creation timestamp. |
+| `updatedAt` | Last update timestamp. |
+
+#### TryOnJob
+
+| Field | Purpose |
+| --- | --- |
+| `id` | Try-on job ID. |
+| `status` | Queued, processing, succeeded, failed, canceled, or deletion pending. |
+| `items` | Discriminated catalog or wardrobe item summaries. |
+| `result` | Private result summary with a short-lived URL when ready. |
+| `failureCode` | Stable user-safe failure reason when applicable. |
+| `createdAt` | Job creation timestamp. |
+| `completedAt` | Optional terminal timestamp. |
+| `expiresAt` | Optional result retention deadline. |
+
+API responses must not expose provider job IDs, internal storage keys, raw model prompts,
+processor credentials, or detailed provider errors.
+
+### 17.6 Phase 3 Candidate Profile And Consent Endpoints
+
+| Method | Candidate Path | Purpose | Main Planning Rules |
+| --- | --- | --- | --- |
+| GET | `/api/v1/me/try-on-profile` | Get optional try-on profile. | Return only authenticated user's profile. |
+| POST | `/api/v1/me/try-on-profile` | Create try-on profile after consent flow starts. | Must not silently create or populate sensitive fields during normal registration. |
+| PATCH | `/api/v1/me/try-on-profile` | Update approved profile fields. | Permit only fields required by the selected model and approved policy. |
+| DELETE | `/api/v1/me/try-on-profile` | Withdraw and delete try-on profile. | Start idempotent deletion across jobs, assets, storage, and processors. |
+| POST | `/api/v1/me/try-on-profile/consents` | Record explicit current consent. | Require supported policy version and purpose. |
+| DELETE | `/api/v1/me/try-on-profile/consents/current` | Withdraw current consent. | Block new jobs immediately and start applicable deletion workflow. |
+
+### 17.7 Phase 3 Candidate Try-On Endpoints
+
+| Method | Candidate Path | Purpose | Main Planning Rules |
+| --- | --- | --- | --- |
+| POST | `/api/v1/try-on/assets/upload-request` | Request private source-media upload. | Require current consent; validate type, size, purpose, and ownership. |
+| POST | `/api/v1/try-on/assets/:assetId/confirm` | Confirm source media readiness. | Validate object and run approved input-quality checks before allowing jobs. |
+| DELETE | `/api/v1/try-on/assets/:assetId` | Delete private source or result asset. | Asset must belong to user; deletion must propagate to storage and processors where applicable. |
+| POST | `/api/v1/try-on/jobs` | Create asynchronous try-on request. | Require current consent, ready source media, supported item types/categories, and owned outfit/wardrobe references. Use idempotency protection. |
+| GET | `/api/v1/try-on/jobs/:jobId` | Read job status and private result. | Job must belong to authenticated user. Return user-safe status only. |
+| GET | `/api/v1/try-on/jobs` | List user's recent jobs. | Conservative pagination and retention-aware results. |
+| DELETE | `/api/v1/try-on/jobs/:jobId` | Cancel when possible or delete job and result. | Enforce valid status transitions and idempotent cleanup. |
+
+### 17.8 Post-MVP Validation And Privacy Rules
+
+- Wardrobe and try-on IDs must always be checked against authenticated ownership.
+- Outfit and wardrobe item owners must match.
+- Upload authorization must be short-lived and limited to one object key, size, type, and
+  purpose.
+- Read URLs must be short-lived and must not be stored in analytics.
+- Private media, storage keys, measurements, consent details, and provider identifiers must
+  not be accepted in generic analytics metadata.
+- Consent must be current when a try-on job is created and again before external dispatch.
+- Unsupported categories or insufficient inputs should fail validation before creating
+  expensive AI work where practical.
+- Job creation should support idempotency to avoid duplicate AI cost.
+- Deletion endpoints should be safe to retry and should expose deletion-pending state when
+  cross-system cleanup is asynchronous.

@@ -1,15 +1,18 @@
 # Velora Architecture Document
 
-Version: 1.0  
-Status: Draft  
-Date: 2026-06-15  
-Source: `docs/PRD.md` v1.0 and `AGENTS.md`
+Version: 1.1<br>
+Status: Draft<br>
+Date: 2026-06-29<br>
+Source: `docs/PRD.md` v1.1 and `AGENTS.md`
 
 ## 1. Purpose
 
 This document defines the MVP architecture for Velora. It translates the PRD into a technical structure that supports product discovery, product catalog browsing, product details, wishlist/favorites, outfit creation, saved outfits, retailer redirects, analytics, and internal admin operations.
 
 This document does not define implementation code. It describes system boundaries, responsibilities, data ownership, and folder organization for the MVP.
+
+Sections 13 and later describe post-MVP architecture direction only. They are not approval
+to add Digital Wardrobe or AI services to the current runtime.
 
 ## 2. MVP Architecture Principles
 
@@ -688,3 +691,171 @@ The following should only be revisited after MVP validation:
 - Social features
 - More advanced search infrastructure
 - Dedicated analytics warehouse or event pipeline
+
+## 13. Post-MVP Architecture Roadmap
+
+### 13.1 Scope Guardrail
+
+The current mobile app, Fastify API, PostgreSQL database, and admin panel remain the MVP
+architecture. Phase 2 extends those boundaries for Digital Wardrobe. Phase 3 introduces an
+AI processing boundary only after Phase 2 validation and separate privacy approval.
+
+Future architecture should preserve these principles:
+
+- Existing MVP catalog, wishlist, outfit, redirect, and analytics behavior remains valid.
+- User-owned wardrobe data is never treated as public catalog data.
+- Sensitive try-on data is separated from normal account and product data.
+- The backend remains the authority for ownership, consent, and access decisions.
+- AI providers or services never receive broader database access.
+
+### 13.2 Phase 2: Digital Wardrobe Architecture
+
+#### Mobile App
+
+Add a wardrobe feature area with:
+
+- Wardrobe list and item detail screens
+- Add and edit wardrobe item flows
+- Private image upload state and progress
+- A source selector in the outfit builder for catalog and wardrobe items
+- Mixed outfit rendering using a discriminated item shape
+
+Wardrobe API calls should use a dedicated frontend service and query hooks. Uploaded media
+must not be persisted in general application state longer than needed for the upload.
+
+#### Backend API
+
+Add a wardrobe domain with thin routes, Zod schemas, a wardrobe service, and repositories.
+The service should enforce ownership, archive/delete rules, media lifecycle rules, and
+outfit-reference behavior.
+
+The existing outfit domain should evolve without breaking the MVP catalog-product contract.
+The preferred planning approach is:
+
+- Keep the existing `OutfitProduct` relationship for catalog products.
+- Add a separate `OutfitWardrobeItem` relationship for user-owned wardrobe products.
+- Present both through a discriminated API item shape such as `catalog_product` or
+  `wardrobe_item`.
+- Merge and order both relationship sets in the outfit service.
+
+This approach avoids a high-risk migration of existing outfit-product records. A generic
+single-table polymorphic relationship should be reconsidered only if Phase 2 requirements
+show that cross-source ordering or additional item types justify the added integrity
+complexity.
+
+#### Database
+
+PostgreSQL remains the source of truth for wardrobe metadata and ownership. Planned Phase 2
+models are:
+
+- `WardrobeItem`
+- `WardrobeItemMedia`
+- `OutfitWardrobeItem`
+
+Detailed conceptual fields and relationships are defined in `docs/DATABASE.md`.
+
+#### Private Object Storage
+
+User-owned images should be stored in managed private object storage, not as database binary
+data and not at permanent public URLs. The backend should issue short-lived upload or read
+authorization after checking user ownership.
+
+A planned upload flow is:
+
+1. Authenticated client requests permission to upload media for an owned wardrobe item.
+2. Backend validates ownership, file type, size, and intended media purpose.
+3. Client uploads directly to private object storage using short-lived credentials.
+4. Backend confirms the upload and creates the media record.
+5. Background or provider-specific image optimization may occur without blocking item
+   metadata edits.
+
+The exact storage provider is intentionally undecided.
+
+#### User Profile Foundation
+
+Do not expand the base `User` table with body-image or measurement fields. Phase 2 may
+prepare an optional one-to-one relationship from `User` to a future `TryOnProfile`, but the
+profile and sensitive data should not be created until the user enters the Phase 3 consent
+flow.
+
+### 13.3 Phase 3: Virtual Try-On Architecture
+
+Virtual try-on should be added as an isolated asynchronous capability, not embedded in
+product or outfit route handlers.
+
+Planned components:
+
+1. Mobile Try-On Experience
+   - Consent and limitations
+   - Private input upload
+   - Supported item selection
+   - Job status, result review, retry, and deletion
+
+2. Fastify Try-On Orchestration
+   - Authenticates the user and validates ownership
+   - Checks consent and category support
+   - Creates jobs and exposes status
+   - Issues short-lived media access
+   - Applies retention and deletion policies
+
+3. AI Processing Boundary
+   - May begin with an approved external provider or a separate Python/FastAPI service
+   - Receives only the media and metadata required for one job
+   - Has no direct access to user tables or general application credentials
+   - Returns status and output references through authenticated service-to-service calls
+
+4. Private Media Storage
+   - Stores source body media and generated results separately from catalog and wardrobe
+     media
+   - Uses explicit media purpose and retention metadata
+   - Supports deletion across source assets, results, and failed jobs
+
+5. Durable Job Execution
+   - Try-on requests should be asynchronous because latency and retries are model-dependent
+   - The job mechanism must survive process restarts
+   - Queue technology should be selected only when Phase 3 implementation is approved; this
+     roadmap does not add Redis or other infrastructure to MVP
+
+Planned processing flow:
+
+1. User accepts the current try-on consent and submits supported inputs.
+2. Fastify validates ownership, consent, media readiness, and selected item support.
+3. Fastify creates a `TryOnJob` and dispatches only required inputs to the AI boundary.
+4. The AI boundary processes the request and stores a private result.
+5. Fastify exposes job status and a short-lived result URL to the owning user.
+6. Retention or user deletion removes inputs, outputs, and processor-side copies.
+
+### 13.4 Technical Risks
+
+Phase 2 risks:
+
+- Direct uploads can leave orphaned objects when confirmation fails.
+- User-entered categories and colors can become inconsistent with catalog taxonomy.
+- Mixed item serialization can cause frontend and analytics ambiguity if item type is not
+  explicit.
+- Archived or deleted wardrobe items may break historical outfit previews without a clear
+  snapshot or retention rule.
+- Storage cost can grow faster than relational data cost.
+
+Phase 3 risks:
+
+- Input validation cannot fully predict model quality.
+- Model capabilities may not support all categories, layering, or mixed-source outfits.
+- Long processing times require durable jobs, cancellation, retries, and idempotency.
+- Provider behavior can create data residency, deletion, cost, and availability risks.
+- Generated outputs may be biased, misleading, or visually inconsistent.
+- Self-hosted models add GPU capacity, model lifecycle, security, and operational burden.
+
+### 13.5 Privacy And Security Boundaries
+
+- Wardrobe, try-on profile, media, and jobs must always be scoped by authenticated `userId`.
+- Private media should use storage keys internally and short-lived signed access externally.
+- Logs, analytics events, and error reports must not contain raw images, signed URLs,
+  measurements, or provider credentials.
+- Image metadata not required by the product should be removed before durable storage.
+- Consent records should be versioned and retained as evidence independently from generated
+  results.
+- Account deletion and consent withdrawal require idempotent deletion orchestration across
+  PostgreSQL, object storage, and any AI processor.
+- Administrative access to private user media is not implied by the existing admin role and
+  requires separate policy and audit design before implementation.

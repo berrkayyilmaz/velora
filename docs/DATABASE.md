@@ -1,9 +1,9 @@
 # Velora Database Design
 
-Version: 1.0  
-Status: Draft  
-Date: 2026-06-15  
-Source: `docs/PRD.md` v1.0 and `docs/ARCHITECTURE.md` v1.0
+Version: 1.1<br>
+Status: Draft<br>
+Date: 2026-06-29<br>
+Source: `docs/PRD.md` v1.1 and `docs/ARCHITECTURE.md` v1.1
 
 ## 1. Purpose
 
@@ -24,6 +24,10 @@ The design supports the approved MVP scope:
 - Internal admin product and analytics operations
 
 The design intentionally excludes AI virtual try-on, AI stylist recommendations, checkout, payments, order tracking, social features, public web features, partner dashboards, and advanced recommendation infrastructure.
+
+Section 23 defines planning-level database additions for post-MVP Phase 2 Digital Wardrobe
+and Phase 3 Virtual Try-On. Those models are not part of the current Prisma schema or MVP
+data contract.
 
 ## 2. Database Principles
 
@@ -78,6 +82,12 @@ Analytics and redirect models:
 - `AnalyticsEvent`
 - `RedirectEvent`
 
+Post-MVP planned models:
+
+- Phase 2: `WardrobeItem`, `WardrobeItemMedia`, `OutfitWardrobeItem`
+- Phase 3: `TryOnProfile`, `TryOnConsent`, `TryOnAsset`, `TryOnJob`,
+  `TryOnJobItem`
+
 ## 5. User Model
 
 ### Purpose
@@ -122,6 +132,8 @@ Stores customer accounts for the mobile app. Users own wishlists, outfits, analy
 - Style preferences.
 - Personalized fashion preferences.
 - Preference-based recommendations.
+- One optional Digital Wardrobe relationship.
+- One optional, separately protected try-on profile relationship.
 
 ## 6. PasswordResetToken Model
 
@@ -760,3 +772,321 @@ Potential future database expansion areas:
 - Dedicated analytics warehouse or event pipeline.
 - AI styling and try-on data, only when explicitly approved.
 
+## 23. Post-MVP Data Model Roadmap
+
+### 23.1 Scope And Migration Principles
+
+- The existing MVP schema remains unchanged until Phase 2 implementation is approved.
+- Wardrobe metadata belongs in PostgreSQL; image binary data belongs in private object
+  storage.
+- Wardrobe and try-on records must be owned directly or transitively by one `User`.
+- Existing catalog `Product` records remain admin-managed and separate from user-owned
+  wardrobe records.
+- Existing `OutfitProduct` records continue to represent catalog products.
+- Phase 2 adds `OutfitWardrobeItem` rather than converting existing outfit relationships to
+  nullable polymorphic foreign keys.
+- Phase 3 try-on data remains separate from the base `User` table.
+
+### 23.2 Phase 2 Model: WardrobeItem
+
+#### Purpose
+
+Represents one product owned by a user in their private Digital Wardrobe.
+
+#### Planned Fields
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `id` | Yes | Primary identifier. |
+| `userId` | Yes | Owning user. |
+| `title` | Yes | User-facing item name. |
+| `categoryId` | Yes | Existing category used for organization and outfit guidance. |
+| `color` | No | User-provided primary color. |
+| `brandLabel` | No | Free-text brand name when known; not a catalog `Brand` relationship. |
+| `notes` | No | Private user notes. |
+| `status` | Yes | Active or archived lifecycle state. |
+| `createdAt` | Yes | Creation timestamp. |
+| `updatedAt` | Yes | Last update timestamp. |
+
+#### Relationships
+
+- Many `WardrobeItem` records belong to one `User`.
+- Many `WardrobeItem` records belong to one `Category`.
+- One `WardrobeItem` has many `WardrobeItemMedia` records.
+- One `WardrobeItem` has many `OutfitWardrobeItem` records.
+- A wardrobe item may be referenced by future `TryOnJobItem` records.
+
+#### Planned Indexes
+
+- Index on `userId` and `status`.
+- Index on `userId` and `updatedAt`.
+- Index on `userId` and `categoryId`.
+- Optional index on normalized color after real filtering requirements are validated.
+
+#### Phase 2 Notes
+
+- Price, retailer, source platform, `productUrl`, and affiliate data are not required.
+- Wardrobe items are private and must never appear in the public catalog query.
+- Archiving should be preferred when an item remains referenced by an outfit.
+- Hard deletion behavior must define whether outfit references are removed or retained as a
+  minimal snapshot.
+
+### 23.3 Phase 2 Model: WardrobeItemMedia
+
+#### Purpose
+
+Stores metadata for privately stored wardrobe images without storing image binary data in
+PostgreSQL.
+
+#### Planned Fields
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `id` | Yes | Primary identifier. |
+| `wardrobeItemId` | Yes | Owning wardrobe item. |
+| `storageKey` | Yes | Private object-storage key. |
+| `mediaType` | Yes | Approved MIME type. |
+| `purpose` | Yes | Primary image or another approved wardrobe-image purpose. |
+| `width` | No | Validated image width when available. |
+| `height` | No | Validated image height when available. |
+| `fileSize` | No | Validated object size for operations and limits. |
+| `createdAt` | Yes | Creation timestamp. |
+| `deletedAt` | No | Soft deletion or deletion-processing timestamp. |
+
+#### Relationships
+
+- Many `WardrobeItemMedia` records belong to one `WardrobeItem`.
+- Ownership is inherited through `WardrobeItem.userId`.
+
+#### Planned Indexes
+
+- Unique index on `storageKey`.
+- Index on `wardrobeItemId` and `createdAt`.
+- Index on `deletedAt` for cleanup processing.
+
+#### Phase 2 Notes
+
+- API responses should expose short-lived read URLs, not durable storage keys.
+- Upload confirmation should create the database record only after object validation.
+- Cleanup must handle abandoned uploads and database records whose object deletion is still
+  pending.
+
+### 23.4 Phase 2 Model: OutfitWardrobeItem
+
+#### Purpose
+
+Joins a saved outfit to a user-owned wardrobe item while preserving the existing
+`OutfitProduct` join for catalog products.
+
+#### Planned Fields
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `id` | Yes | Primary identifier. |
+| `outfitId` | Yes | Outfit relationship. |
+| `wardrobeItemId` | Yes | Wardrobe item relationship. |
+| `createdAt` | Yes | Timestamp when the item was added. |
+
+#### Relationships
+
+- Many `OutfitWardrobeItem` records belong to one `Outfit`.
+- Many `OutfitWardrobeItem` records reference one `WardrobeItem`.
+- The service must verify that the outfit and wardrobe item have the same `userId`.
+
+#### Planned Indexes
+
+- Unique composite index on `outfitId` and `wardrobeItemId`.
+- Index on `outfitId`.
+- Index on `wardrobeItemId`.
+- Index on `createdAt`.
+
+#### Phase 2 Notes
+
+- Outfit responses should merge `OutfitProduct` and `OutfitWardrobeItem` as discriminated
+  items.
+- A catalog product and wardrobe item are distinct even if they represent the same physical
+  product.
+- Cross-source manual ordering is not assumed. If required later, ordering must be designed
+  consistently across both join models.
+
+### 23.5 Phase 3 Model: TryOnProfile
+
+#### Purpose
+
+Represents an optional, separately protected profile for a user who enters the Virtual
+Try-On experience.
+
+#### Planned Fields
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `id` | Yes | Primary identifier. |
+| `userId` | Yes | Owning user. |
+| `status` | Yes | Active, disabled, or deletion-pending lifecycle state. |
+| `createdAt` | Yes | Creation timestamp. |
+| `updatedAt` | Yes | Last update timestamp. |
+| `deletedAt` | No | Deletion request or completion timestamp. |
+
+#### Relationships
+
+- One `TryOnProfile` belongs to one `User`.
+- One `User` has at most one active `TryOnProfile`.
+- One `TryOnProfile` has many `TryOnConsent`, `TryOnAsset`, and `TryOnJob` records.
+
+#### Planned Indexes
+
+- Unique index on `userId`.
+- Index on `status`.
+- Index on `deletedAt` for deletion processing.
+
+#### Phase 3 Notes
+
+- The profile itself should not become a generic container for arbitrary sensitive JSON.
+- Measurements or derived attributes should be added only when required by an approved model
+  and should have field-level purpose, validation, retention, and access rules.
+
+### 23.6 Phase 3 Model: TryOnConsent
+
+#### Purpose
+
+Records versioned, purpose-specific user consent for try-on data processing.
+
+#### Planned Fields
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `id` | Yes | Primary identifier. |
+| `tryOnProfileId` | Yes | Related try-on profile. |
+| `policyVersion` | Yes | Version of the accepted disclosure and policy. |
+| `purpose` | Yes | Approved processing purpose. |
+| `grantedAt` | Yes | Consent timestamp. |
+| `withdrawnAt` | No | Consent withdrawal timestamp. |
+
+#### Relationships
+
+- Many `TryOnConsent` records belong to one `TryOnProfile`.
+
+#### Planned Indexes
+
+- Index on `tryOnProfileId` and `grantedAt`.
+- Composite index on `tryOnProfileId`, `purpose`, and `withdrawnAt`.
+
+#### Phase 3 Notes
+
+- Consent history should be append-oriented rather than overwritten.
+- A job must verify current consent before dispatching data to an AI processor.
+
+### 23.7 Phase 3 Model: TryOnAsset
+
+#### Purpose
+
+Stores metadata for private source media and generated try-on results.
+
+#### Planned Fields
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `id` | Yes | Primary identifier. |
+| `tryOnProfileId` | Yes | Owning try-on profile. |
+| `jobId` | No | Generating job for result assets. |
+| `assetType` | Yes | User input, normalized input, or generated result. |
+| `storageKey` | Yes | Private object-storage key. |
+| `mediaType` | Yes | Approved MIME type. |
+| `status` | Yes | Uploading, ready, failed, or deletion-pending. |
+| `expiresAt` | No | Retention deadline when the asset is temporary. |
+| `createdAt` | Yes | Creation timestamp. |
+| `deletedAt` | No | Deletion timestamp. |
+
+#### Relationships
+
+- Many `TryOnAsset` records belong to one `TryOnProfile`.
+- Result assets may belong to one `TryOnJob`.
+
+#### Planned Indexes
+
+- Unique index on `storageKey`.
+- Index on `tryOnProfileId`, `assetType`, and `status`.
+- Index on `jobId`.
+- Index on `expiresAt` and `deletedAt` for retention cleanup.
+
+#### Phase 3 Notes
+
+- Storage keys, signed URLs, and raw media must not be copied into analytics metadata.
+- Source and result asset retention may differ.
+- Provider-side deletion state may require separate operational tracking.
+
+### 23.8 Phase 3 Models: TryOnJob And TryOnJobItem
+
+#### Purpose
+
+Represents asynchronous AI processing and the catalog or wardrobe items selected for one
+try-on request.
+
+#### Planned TryOnJob Fields
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `id` | Yes | Primary identifier. |
+| `userId` | Yes | Owning user for direct authorization. |
+| `tryOnProfileId` | Yes | Related try-on profile. |
+| `outfitId` | No | Optional source outfit context. |
+| `status` | Yes | Queued, processing, succeeded, failed, canceled, or deletion-pending. |
+| `provider` | No | Approved processor identifier. |
+| `providerJobId` | No | External job reference, never exposed publicly. |
+| `failureCode` | No | Stable user-safe failure category. |
+| `createdAt` | Yes | Creation timestamp. |
+| `startedAt` | No | Processing start timestamp. |
+| `completedAt` | No | Terminal timestamp. |
+| `expiresAt` | No | Job/result retention deadline. |
+
+#### Planned TryOnJobItem Fields
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `id` | Yes | Primary identifier. |
+| `jobId` | Yes | Try-on job relationship. |
+| `itemType` | Yes | Catalog product or wardrobe item discriminator. |
+| `productId` | Conditional | Catalog product when `itemType` is catalog. |
+| `wardrobeItemId` | Conditional | Wardrobe item when `itemType` is wardrobe. |
+| `position` | No | Processing or layering order if supported. |
+| `createdAt` | Yes | Creation timestamp. |
+
+#### Relationships
+
+- Many `TryOnJob` records belong to one `User` and one `TryOnProfile`.
+- A `TryOnJob` may reference one owned `Outfit`.
+- One `TryOnJob` has one or more `TryOnJobItem` records.
+- A `TryOnJobItem` references either a catalog `Product` or owned `WardrobeItem`.
+- One successful job may produce one or more result `TryOnAsset` records.
+
+#### Planned Indexes
+
+- Index on `userId`, `status`, and `createdAt`.
+- Index on `tryOnProfileId` and `createdAt`.
+- Unique index on `provider` and `providerJobId` when both exist.
+- Index on `expiresAt`.
+- Index on `TryOnJobItem.jobId`.
+- Index on `TryOnJobItem.productId` and `TryOnJobItem.wardrobeItemId`.
+
+#### Phase 3 Notes
+
+- Conditional item references require database-level integrity rules in addition to Zod
+  validation.
+- Jobs should snapshot the minimum display and processing metadata needed to explain a result
+  if source catalog or wardrobe records later change.
+- Failure details returned to users must not expose provider internals or sensitive media
+  references.
+
+### 23.9 Post-MVP Ownership, Retention, And Deletion Rules
+
+- Every wardrobe item must belong to the authenticated user.
+- An outfit can reference a wardrobe item only when both share the same owner.
+- Every try-on profile, consent, asset, job, and wardrobe input must resolve to one owning
+  user.
+- Wardrobe deletion must define behavior for outfit references before Phase 2 implementation.
+- Try-on profile deletion must cascade into an idempotent deletion workflow for jobs, source
+  assets, results, and processor-side copies.
+- Database deletion must not be marked complete until required object-storage deletion has
+  succeeded or entered a monitored retry state.
+- Account deletion must include Digital Wardrobe and Virtual Try-On data when those phases
+  are implemented.
