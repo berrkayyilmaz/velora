@@ -5,6 +5,7 @@ import corsPlugin from "./plugins/cors.js";
 import errorHandlerPlugin from "./plugins/error-handler.js";
 import prismaPlugin from "./plugins/prisma.js";
 import rateLimitPlugin from "./plugins/rate-limit.js";
+import wardrobeMediaPlugin from "./plugins/wardrobe-media.js";
 import adminAnalyticsRoutes from "./routes/admin-analytics.routes.js";
 import adminCatalogRoutes from "./routes/admin-catalog.routes.js";
 import adminProductRoutes from "./routes/admin-product.routes.js";
@@ -17,6 +18,7 @@ import productRoutes from "./routes/product.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
 import redirectRoutes from "./routes/redirect.routes.js";
 import wardrobeRoutes from "./routes/wardrobe.routes.js";
+import wardrobeMediaRoutes from "./routes/wardrobe-media.routes.js";
 import wishlistRoutes from "./routes/wishlist.routes.js";
 
 const API_PREFIX = "/api/v1";
@@ -30,6 +32,7 @@ export function buildApp(): FastifyInstance {
   app.register(corsPlugin);
   app.register(rateLimitPlugin);
   app.register(prismaPlugin);
+  app.register(wardrobeMediaPlugin);
   app.register(healthRoutes, { prefix: "/health" });
   app.register(healthRoutes, { prefix: `${API_PREFIX}/health` });
   app.register(authRoutes, { prefix: `${API_PREFIX}/auth` });
@@ -40,6 +43,7 @@ export function buildApp(): FastifyInstance {
   app.register(redirectRoutes, { prefix: `${API_PREFIX}/redirects` });
   app.register(analyticsRoutes, { prefix: `${API_PREFIX}/analytics` });
   app.register(wardrobeRoutes, { prefix: `${API_PREFIX}/wardrobe` });
+  app.register(wardrobeMediaRoutes, { prefix: `${API_PREFIX}/wardrobe` });
   app.register(adminRoutes, { prefix: `${API_PREFIX}/admin` });
   app.register(adminCatalogRoutes, { prefix: `${API_PREFIX}/admin` });
   app.register(adminAnalyticsRoutes, { prefix: `${API_PREFIX}/admin/analytics` });
