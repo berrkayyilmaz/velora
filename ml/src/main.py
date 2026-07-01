@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from src.benchmark import BenchmarkResult, write_benchmark_result, write_dummy_artifact
+from src.datasets import DatasetManifestError, load_dataset_manifest
 from src.providers import ProviderRequest, create_provider_registry
 from src.runner import RunnerConfigError, load_runner_config
 
@@ -48,6 +49,17 @@ def build_parser() -> argparse.ArgumentParser:
     dummy_parser.add_argument("--width", type=int)
     dummy_parser.add_argument("--height", type=int)
     dummy_parser.add_argument("--seed", type=int)
+
+    manifest_parser = subparsers.add_parser(
+        "validate-manifest",
+        help="Validate a benchmark dataset manifest.",
+    )
+    manifest_parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path("config/example.dataset.json"),
+        help="Benchmark dataset manifest JSON path.",
+    )
 
     return parser
 
@@ -119,6 +131,19 @@ def execute_dummy_provider(args: argparse.Namespace) -> int:
     return 1 if error_message else 0
 
 
+def validate_manifest(args: argparse.Namespace) -> int:
+    """Validate a dataset manifest and print a compact summary."""
+    manifest = load_dataset_manifest(args.manifest)
+    summary = {
+        "datasetId": manifest.dataset_id,
+        "sampleCount": len(manifest.samples),
+        "schemaVersion": manifest.schema_version,
+        "status": "valid",
+    }
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse CLI arguments and execute the selected environment-only command."""
     parser = build_parser()
@@ -128,6 +153,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             return execute_dummy_provider(args)
         except (RunnerConfigError, ValueError) as error:
+            parser.error(str(error))
+
+    if args.command == "validate-manifest":
+        try:
+            return validate_manifest(args)
+        except DatasetManifestError as error:
             parser.error(str(error))
 
     for key, value in environment_info().items():

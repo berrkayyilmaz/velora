@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "velora-synthetic-smoke",
+  "samples": [
+    {
+      "id": "case-smoke-0001",
+      "personImagePath": "data/input/benchmarks/example/person-syn-0001.png",
+      "garmentImagePath": "data/input/benchmarks/example/garment-upper-0001.png",
+      "maskImagePath": "data/input/benchmarks/example/mask-person-syn-0001.png",
+      "expectedCategory": "upper_body",
+      "sampleType": "smoke"
+    }
+  ]
+}
