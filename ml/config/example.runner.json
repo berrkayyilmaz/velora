@@ -1,9 +1,9 @@
 {
-  "provider": "catvton",
-  "device": "cuda:0",
+  "provider": "dummy",
+  "device": "cpu",
   "inputDir": "data/input/benchmarks/example",
   "outputDir": "data/output/benchmarks",
-  "modelPath": "models/catvton",
+  "modelPath": "models/dummy",
   "maxBatchSize": 1,
   "imageSize": {
     "width": 768,

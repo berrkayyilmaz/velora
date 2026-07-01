@@ -14,6 +14,7 @@ from pathlib import Path
 
 from src.benchmark import BenchmarkResult, write_benchmark_result, write_dummy_artifact
 from src.providers import ProviderRequest, create_provider_registry
+from src.runner import RunnerConfigError, load_runner_config
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -28,19 +29,25 @@ def build_parser() -> argparse.ArgumentParser:
         "dummy",
         help="Execute the deterministic dummy provider.",
     )
-    dummy_parser.add_argument("--request-id", default="dummy-request")
-    dummy_parser.add_argument("--person-asset", default="mock/person.png")
-    dummy_parser.add_argument("--garment-asset", default="mock/garment.png")
-    dummy_parser.add_argument("--garment-category", default="upper_body")
-    dummy_parser.add_argument("--width", type=int, default=768)
-    dummy_parser.add_argument("--height", type=int, default=1024)
-    dummy_parser.add_argument("--seed", type=int, default=0)
     dummy_parser.add_argument(
-        "--output-dir",
+        "--config",
         type=Path,
-        default=Path("data/output"),
-        help="Directory for the benchmark result and dummy artifact.",
+        default=Path("config/example.runner.json"),
+        help="Runner JSON configuration path.",
     )
+    dummy_parser.add_argument("--request-id", default="dummy-request")
+    dummy_parser.add_argument("--provider")
+    dummy_parser.add_argument("--device")
+    dummy_parser.add_argument("--input-dir", type=Path)
+    dummy_parser.add_argument("--output-dir", type=Path)
+    dummy_parser.add_argument("--model-path", type=Path)
+    dummy_parser.add_argument("--max-batch-size", type=int)
+    dummy_parser.add_argument("--person-asset")
+    dummy_parser.add_argument("--garment-asset")
+    dummy_parser.add_argument("--garment-category", default="upper_body")
+    dummy_parser.add_argument("--width", type=int)
+    dummy_parser.add_argument("--height", type=int)
+    dummy_parser.add_argument("--seed", type=int)
 
     return parser
 
@@ -59,16 +66,27 @@ def environment_info() -> dict[str, str]:
 
 def execute_dummy_provider(args: argparse.Namespace) -> int:
     """Execute the dummy provider and write its benchmark output."""
+    config = load_runner_config(args.config).with_overrides(
+        provider=args.provider,
+        device=args.device,
+        input_dir=args.input_dir,
+        output_dir=args.output_dir,
+        model_path=args.model_path,
+        max_batch_size=args.max_batch_size,
+        width=args.width,
+        height=args.height,
+        seed=args.seed,
+    )
     registry = create_provider_registry()
-    provider = registry.get("dummy")
+    provider = registry.get(config.provider)
     request = ProviderRequest(
         request_id=args.request_id,
-        person_asset=args.person_asset,
-        garment_asset=args.garment_asset,
+        person_asset=args.person_asset or str(config.input_dir / "person.png"),
+        garment_asset=args.garment_asset or str(config.input_dir / "garment.png"),
         garment_category=args.garment_category,
-        target_width=args.width,
-        target_height=args.height,
-        seed=args.seed,
+        target_width=config.image_size.width,
+        target_height=config.image_size.height,
+        seed=config.seed,
     )
     started_at = datetime.now(UTC)
     started_clock = time.perf_counter()
@@ -77,7 +95,7 @@ def execute_dummy_provider(args: argparse.Namespace) -> int:
 
     try:
         provider_result = provider.execute(request)
-        output_path = str(write_dummy_artifact(args.output_dir, provider_result))
+        output_path = str(write_dummy_artifact(config.output_dir, provider_result))
         status = provider_result.status
     except Exception as error:  # noqa: BLE001 - benchmark failures must produce a result file.
         status = "failed"
@@ -96,7 +114,7 @@ def execute_dummy_provider(args: argparse.Namespace) -> int:
         output_path=output_path,
         error=error_message,
     )
-    write_benchmark_result(args.output_dir, benchmark_result)
+    write_benchmark_result(config.output_dir, benchmark_result)
     print(json.dumps(benchmark_result.to_payload(), indent=2, sort_keys=True))
     return 1 if error_message else 0
 
@@ -107,7 +125,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "dummy":
-        return execute_dummy_provider(args)
+        try:
+            return execute_dummy_provider(args)
+        except (RunnerConfigError, ValueError) as error:
+            parser.error(str(error))
 
     for key, value in environment_info().items():
         print(f"{key}: {value}")
