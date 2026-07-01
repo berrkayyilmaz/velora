@@ -1,8 +1,8 @@
 # Velora MVP Smoke Test Plan
 
-Version: 1.0  
-Status: Draft  
-Last updated: 2026-06-26
+- Version: 1.1
+- Status: Draft
+- Last updated: 2026-07-01
 
 ## 1. Purpose
 
@@ -14,8 +14,8 @@ Smoke testing should be run before sharing an MVP build, after meaningful backen
 
 ### Included
 
-- Backend health, authentication, profile, catalog, wishlist, outfits, redirects, analytics, and admin APIs
-- Expo mobile authentication, catalog, wishlist, outfits, retailer redirect, profile, logout, and password reset flows
+- Backend health, authentication, profile, catalog, wishlist, Digital Wardrobe, mixed outfits, redirects, analytics, and admin APIs
+- Expo mobile authentication, catalog, wishlist, Digital Wardrobe, mixed outfits, retailer redirect, profile, logout, and password reset flows
 - Admin login, dashboard analytics, product management, product import, catalog management, and logout flows
 - Static validation commands for backend, frontend, and admin workspaces
 
@@ -115,6 +115,10 @@ Invoke-RestMethod `
 
 If the email already exists, use a timestamped email such as `smoke-user-20260626@example.com`.
 
+Create a second timestamped mobile user when testing wardrobe and outfit
+ownership boundaries. The second user must receive `404` when requesting the
+first user's wardrobe records or attempting to add them to an outfit.
+
 ### 6.2 Admin Test User
 
 The seed script creates catalog data, but it does not create an admin user. Create a local admin from `backend/` with a one-off command:
@@ -167,6 +171,22 @@ Use PowerShell, Postman, or another API client. Confirm each endpoint returns th
 - [ ] Adding the same product twice does not create duplicate wishlist records.
 - [ ] `DELETE /api/v1/wishlist/items/:productId` removes the product.
 
+### Digital Wardrobe
+
+- [ ] `GET /api/v1/wardrobe` returns only the authenticated user's items.
+- [ ] `POST /api/v1/wardrobe` creates a draft item with a valid active `categoryId`.
+- [ ] `GET /api/v1/wardrobe/:wardrobeItemId` returns the created item.
+- [ ] A second user receives `404` for the first user's wardrobe item.
+- [ ] Activating an item without media fails with `WARDROBE_MEDIA_REQUIRED`.
+- [ ] `POST /api/v1/wardrobe/:wardrobeItemId/media` accepts one JPEG, PNG, or WebP `file` part and rejects unsupported or oversized uploads.
+- [ ] Upload response contains media ID, item ID, type, purpose, status, nullable dimensions, file size, timestamp, and URL without exposing `storageKey`.
+- [ ] Reloading item detail preserves `primaryMedia`.
+- [ ] `PATCH /api/v1/wardrobe/:wardrobeItemId` activates the item after media is ready.
+- [ ] Archiving is reversible; archived items cannot be newly added to outfits.
+- [ ] Deleting the last media from an active item returns it to draft.
+- [ ] Deleting media from an archived item leaves it archived.
+- [ ] `DELETE /api/v1/wardrobe/:wardrobeItemId` removes the item, its outfit relationships, media metadata, and local media file.
+
 ### Outfits
 
 - [ ] `GET /api/v1/outfits` returns the authenticated user's saved outfits.
@@ -176,6 +196,13 @@ Use PowerShell, Postman, or another API client. Confirm each endpoint returns th
 - [ ] `POST /api/v1/outfits/:outfitId/products` adds an active product.
 - [ ] Adding the same product twice does not create duplicates.
 - [ ] `DELETE /api/v1/outfits/:outfitId/products/:productId` removes the product.
+- [ ] `POST /api/v1/outfits/:outfitId/wardrobe-items` adds an owned active wardrobe item with primary media.
+- [ ] Adding the same wardrobe item twice returns the existing mixed outfit without creating a duplicate.
+- [ ] Another user cannot add the wardrobe item to an outfit.
+- [ ] Mixed outfit detail contains catalog and wardrobe discriminated items ordered by `addedAt`.
+- [ ] `productCount`, `wardrobeItemCount`, and total `itemCount` are correct.
+- [ ] Legacy `products` and `productsPreview` remain catalog-only.
+- [ ] `DELETE /api/v1/outfits/:outfitId/wardrobe-items/:wardrobeItemId` removes the wardrobe item and updates counts.
 - [ ] `DELETE /api/v1/outfits/:outfitId` deletes the outfit.
 
 ### Redirects And Analytics
@@ -226,13 +253,30 @@ Run through Expo web, Android emulator, iOS simulator, or a physical device. For
 - [ ] Wishlist item can be removed.
 - [ ] Wishlist state updates after add/remove.
 
+### Digital Wardrobe
+
+- [ ] Wardrobe tab loads the authenticated user's items.
+- [ ] Search, category, status, and sort controls update the list.
+- [ ] Create flow saves a draft item and opens its detail screen.
+- [ ] Detail shows metadata, status, dates, and the empty media state.
+- [ ] Image picker uploads a supported image and the image remains after reload.
+- [ ] Edit flow activates the item after media upload.
+- [ ] Draft and archived items show a clear blocked Add to Outfit state.
+- [ ] Active item with media can open the outfit selector.
+- [ ] Deleting media updates an active item to draft in list and detail views.
+- [ ] Deleting an item returns to the wardrobe list and removes it from cached outfits.
+
 ### Outfits
 
 - [ ] Saved outfits screen loads.
 - [ ] Create outfit flow creates a named outfit.
 - [ ] Product detail can add a product to an outfit.
-- [ ] Outfit detail shows included products.
-- [ ] Product can be removed from an outfit.
+- [ ] Wardrobe detail can add an active item to an existing outfit.
+- [ ] Saved outfit cards show mixed preview media and total `itemCount`.
+- [ ] Outfit detail renders catalog products and wardrobe items distinctly.
+- [ ] Catalog rows retain retailer and remove actions.
+- [ ] Wardrobe rows show image, title, category, color, status, and remove action.
+- [ ] Removing either source updates mixed counts without a stale cached row.
 - [ ] Outfit can be deleted.
 
 ### Retailer Redirect

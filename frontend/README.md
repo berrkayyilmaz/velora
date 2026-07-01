@@ -126,10 +126,23 @@ There is currently no automated frontend test suite.
 
 - Paginated saved-outfit list
 - Create, rename, and delete outfits
-- Outfit detail with category information and soft missing-category hints
+- Mixed catalog and wardrobe item previews and counts
+- Outfit detail with discriminated mixed items, category information, and soft
+  missing-category hints
 - Add products from product detail
-- Remove products from an outfit
+- Add active wardrobe items with media from wardrobe detail
+- Remove catalog products or wardrobe items from an outfit
 - Tracked retailer redirects with outfit context
+
+### Digital Wardrobe
+
+- Paginated wardrobe list with search, category, status, and sort controls
+- Create, view, edit, archive, activate, and delete wardrobe items
+- Draft, active, archived, and deletion-pending status display
+- Primary image upload and deletion
+- Activation guidance when media is missing
+- Add eligible wardrobe items to existing outfits
+- Loading, empty, validation, API error, and success states
 
 ### Profile
 
@@ -153,13 +166,18 @@ JWT as a bearer token. Implemented user-facing endpoint groups are:
 - `/outfits`
 - `/outfits/:id`
 - `/outfits/:id/products`
+- `/outfits/:id/wardrobe-items`
+- `/wardrobe`
+- `/wardrobe/:id`
+- `/wardrobe/:id/media`
 - `/redirects`
 - `/analytics/events`
 
 TanStack Query owns server state. Wishlist mutations invalidate wishlist,
 product-list, and affected product-detail queries. Outfit mutations update or
-remove affected detail data and invalidate saved-outfit lists. Logout clears the
-entire query cache before clearing the auth session.
+remove affected detail data and invalidate saved-outfit lists. Wardrobe metadata
+and media mutations invalidate wardrobe lists and affected outfit summaries.
+Logout clears the entire query cache before clearing the auth session.
 
 Analytics events are sent automatically after successful product-detail,
 filter, wishlist, outfit, and retailer-redirect actions. Analytics requests are
@@ -198,6 +216,13 @@ src/
   detail first.
 - Wishlist and outfit newest/oldest sorting controls are not exposed in the UI.
 - Product descriptions, available colors, and tags are not displayed.
+- Wardrobe image upload uses backend local development storage. Media URLs are
+  not private signed URLs and are not production-ready.
+- Wardrobe image replacement is not supported; delete the current image before
+  uploading another.
+- Creating a new outfit directly from wardrobe detail is not implemented; an
+  existing outfit must be selected.
+- Wardrobe-specific analytics coverage is incomplete.
 - The internal admin web panel described by the PRD is not implemented in this
   frontend.
 - Expo web cross-origin API calls only work when the web origin is included in

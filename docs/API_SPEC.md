@@ -155,8 +155,11 @@ Includes all `ProductSummary` fields plus:
 | --- | --- |
 | `id` | Outfit ID. |
 | `name` | Outfit name. |
-| `productCount` | Number of products in outfit. |
-| `productsPreview` | Small list of `ProductSummary` items for preview. |
+| `productCount` | Number of catalog products in the outfit. |
+| `wardrobeItemCount` | Number of wardrobe items in the outfit. |
+| `itemCount` | Total catalog products and wardrobe items. |
+| `productsPreview` | Legacy catalog-only `ProductSummary` preview list. |
+| `itemsPreview` | Up to four discriminated mixed item previews ordered by `addedAt`. |
 | `createdAt` | Outfit creation timestamp. |
 | `updatedAt` | Last update timestamp. |
 
@@ -167,6 +170,7 @@ Includes all `OutfitSummary` fields plus:
 | Field | Purpose |
 | --- | --- |
 | `products` | Full list of `ProductSummary` items. |
+| `items` | Full discriminated collection of catalog products and wardrobe items. |
 | `includedCategories` | Categories represented in the outfit. |
 | `missingCategoryHints` | Optional soft guidance such as missing shoes or bag. |
 
@@ -245,6 +249,13 @@ Includes all `OutfitSummary` fields plus:
 | DELETE | `/api/v1/outfits/:outfitId` | Delete an outfit. | User auth | Path: `outfitId`. | `data.success`. | Outfit must belong to authenticated user. | Should emit `outfit_deleted`. |
 | POST | `/api/v1/outfits/:outfitId/products` | Add product to outfit. | User auth | Path: `outfitId`; body: `productId`. | `data` is `OutfitDetail`. | Outfit must belong to authenticated user. Product must exist and be active. Product must not already be in outfit. | Should emit `product_added_to_outfit`. No category rules enforced. |
 | DELETE | `/api/v1/outfits/:outfitId/products/:productId` | Remove product from outfit. | User auth | Path: `outfitId`, `productId`. | `data` is `OutfitDetail`. | Outfit must belong to authenticated user. Product must exist in outfit. | Should emit `product_removed_from_outfit`. |
+| POST | `/api/v1/outfits/:outfitId/wardrobe-items` | Add a wardrobe item to an outfit. | User auth | Path: `outfitId`; body: `wardrobeItemId`. | `data` is `OutfitDetail`. Returns `201` when created and `200` for an existing relationship. | Outfit and wardrobe item must belong to the authenticated user. Item must be active and have ready primary media. | Duplicate additions are idempotent. |
+| DELETE | `/api/v1/outfits/:outfitId/wardrobe-items/:wardrobeItemId` | Remove a wardrobe item from an outfit. | User auth | Path: `outfitId`, `wardrobeItemId`. | `data` is `OutfitDetail`. | Outfit and wardrobe item must belong to the authenticated user. Relationship must exist. | Catalog product behavior is unchanged. |
+
+Mixed outfit responses preserve `products`, `productsPreview`, and `productCount` for
+backward compatibility. The additive `items` and `itemsPreview` arrays use
+`type: catalog_product | wardrobe_item`, a relationship `id`, `addedAt`, and exactly one
+source payload.
 
 ## 9. Retailer Redirect Endpoints
 
@@ -445,22 +456,20 @@ The API must not include MVP endpoints for:
 - Affiliate management tools
 - Public web app APIs
 
-## 17. Post-MVP API Planning
+## 17. Phase 2 Digital Wardrobe Contract And Phase 3 Planning
 
 ### 17.1 Status And Compatibility Rules
 
-The endpoints and shapes in this section are planning candidates, not approved implementation
-contracts.
+The Phase 2 wardrobe and mixed-outfit endpoints in Sections 17.2-17.4 describe the current
+implementation. Phase 3 try-on endpoints remain planning candidates.
 
 - Existing MVP endpoints remain unchanged.
 - Existing `/api/v1/outfits/:outfitId/products` endpoints continue to mean catalog products.
-- Phase 2 additions should be additive where practical.
-- If mixed outfit responses cannot remain backward compatible, they should use a new response
-  shape or API version rather than silently changing `ProductSummary` arrays.
+- Mixed outfit response fields are additive.
 - Every wardrobe and try-on endpoint requires user authentication.
 - All wardrobe, outfit, media, and try-on ownership must be verified server-side.
 
-### 17.2 Phase 2 Planned Data Shapes
+### 17.2 Current Wardrobe Data Shapes
 
 #### WardrobeItem
 
@@ -472,22 +481,38 @@ contracts.
 | `color` | Optional primary color. |
 | `brandLabel` | Optional free-text brand label. |
 | `notes` | Optional private notes. |
-| `status` | Active or archived. |
-| `media` | Private media summaries with short-lived read URLs. |
+| `status` | `draft`, `active`, `archived`, or `deletion_pending`. |
+| `primaryMedia` | Ready primary `WardrobeMedia` or `null`. |
 | `createdAt` | Creation timestamp. |
 | `updatedAt` | Last update timestamp. |
 
-Wardrobe responses must not expose object-storage keys, upload credentials, or another user's
-records.
+#### WardrobeMedia
+
+| Field | Purpose |
+| --- | --- |
+| `id` | Media record ID. |
+| `wardrobeItemId` | Owning wardrobe item ID. |
+| `mediaType` | `image/jpeg`, `image/png`, or `image/webp`. |
+| `purpose` | `primary`. |
+| `status` | `uploading`, `ready`, `failed`, or `deletion_pending`. |
+| `width` | Image width when available; currently nullable. |
+| `height` | Image height when available; currently nullable. |
+| `fileSize` | Stored file size in bytes when available. |
+| `createdAt` | Media creation timestamp. |
+| `url` | Media read URL. |
+
+Wardrobe responses never expose `storageKey`. Current development storage returns a relative
+`/uploads/wardrobe/...` URL backed by the backend's local filesystem. It is not a signed,
+private production-media contract.
 
 #### MixedOutfitItem
 
-Outfit items should use a discriminator:
+Outfit items use a discriminator:
 
 | Field | Purpose |
 | --- | --- |
 | `type` | `catalog_product` or `wardrobe_item`. |
-| `id` | Outfit relationship ID or stable item identifier selected during contract design. |
+| `id` | Outfit relationship ID. |
 | `catalogProduct` | `ProductSummary` when type is `catalog_product`; otherwise absent. |
 | `wardrobeItem` | Wardrobe item summary when type is `wardrobe_item`; otherwise absent. |
 | `addedAt` | Timestamp when the item was added to the outfit. |
@@ -495,33 +520,42 @@ Outfit items should use a discriminator:
 Exactly one source payload must be present. Clients must not infer item type from missing
 retailer or price fields.
 
-### 17.3 Phase 2 Candidate Wardrobe Endpoints
+### 17.3 Current Wardrobe Endpoints
 
-| Method | Candidate Path | Purpose | Main Planning Rules |
-| --- | --- | --- | --- |
-| GET | `/api/v1/wardrobe/items` | List the authenticated user's wardrobe. | Support conservative pagination and optional category, color, and status filters. Return only owned records. |
-| POST | `/api/v1/wardrobe/items` | Create wardrobe item metadata. | Require title and category. Do not require price, retailer, source platform, or product URL. |
-| GET | `/api/v1/wardrobe/items/:wardrobeItemId` | Get wardrobe item detail. | Item must belong to authenticated user. |
-| PATCH | `/api/v1/wardrobe/items/:wardrobeItemId` | Edit wardrobe item metadata or archive status. | Item must belong to authenticated user. Validate category and user-entered fields. |
-| DELETE | `/api/v1/wardrobe/items/:wardrobeItemId` | Delete or schedule deletion of a wardrobe item. | Define behavior for outfit references and media cleanup before implementation. |
-| POST | `/api/v1/wardrobe/items/:wardrobeItemId/media/upload-request` | Request a private media upload. | Validate ownership, MIME type, file size, and media purpose. Return short-lived upload authorization only. |
-| POST | `/api/v1/wardrobe/items/:wardrobeItemId/media/confirm` | Confirm and validate an uploaded object. | Object must match the authorized user, item, size, and type before media becomes ready. |
-| DELETE | `/api/v1/wardrobe/items/:wardrobeItemId/media/:mediaId` | Remove wardrobe media. | Media must belong to item and user. Trigger storage deletion. |
+| Method | Path | Purpose | Request | Response | Main Rules |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/wardrobe` | List the authenticated user's wardrobe. | Query: optional `search`, `categoryId`, `status`, `sort`; `page`, `pageSize`. | `data.items` containing `WardrobeItem`; pagination and applied filters. | Returns only records owned by the user. |
+| POST | `/api/v1/wardrobe` | Create wardrobe metadata. | JSON: `title`, `categoryId`; optional nullable `color`, `brandLabel`, `notes`. | `201`; `data` is a draft `WardrobeItem`. | Category must exist and be active. |
+| GET | `/api/v1/wardrobe/:wardrobeItemId` | Get wardrobe detail. | Path ID. | `data` is `WardrobeItem`. | Item must belong to the user. |
+| PATCH | `/api/v1/wardrobe/:wardrobeItemId` | Edit metadata or status. | Any supported editable field; at least one is required. | `data` is updated `WardrobeItem`. | Item must belong to the user. `active` requires ready media. |
+| DELETE | `/api/v1/wardrobe/:wardrobeItemId` | Permanently delete an item. | Path ID. | `data.success`. | Removes owned media files and outfit relationships through database cascades. |
+| POST | `/api/v1/wardrobe/:wardrobeItemId/media` | Upload the primary image. | `multipart/form-data` with one `file`; JPEG, PNG, or WebP; maximum 10 MB. | `201`; `data` is `WardrobeMedia`. | Item must belong to the user and must not already have undeleted primary media. |
+| DELETE | `/api/v1/wardrobe/:wardrobeItemId/media/:mediaId` | Delete primary media. | Path IDs. | `data.success`. | Media must belong to the item and user. Storage object is removed. |
 
-The upload-request/confirm split is preferred because direct object-storage uploads should
-not create trusted database media records before validation.
+Current activation rules:
 
-### 17.4 Phase 2 Candidate Outfit Extensions
+- New items start as `draft`.
+- Uploading media does not activate an item automatically.
+- Changing status to `active` requires at least one ready, undeleted media record.
+- Deleting the final media from an active item returns it to `draft`.
+- Deleting media from an archived item leaves it archived.
+- Archived or draft items cannot be newly added to outfits.
 
-| Method | Candidate Path | Purpose | Main Planning Rules |
-| --- | --- | --- | --- |
-| POST | `/api/v1/outfits/:outfitId/wardrobe-items` | Add owned wardrobe item to outfit. | Outfit and wardrobe item must belong to the same authenticated user. Prevent duplicate wardrobe item relationships. |
-| DELETE | `/api/v1/outfits/:outfitId/wardrobe-items/:wardrobeItemId` | Remove wardrobe item from outfit. | Outfit must belong to user and item must be present. |
-| GET | `/api/v1/outfits/:outfitId` or versioned equivalent | Return mixed outfit detail. | Return an explicit discriminated item collection. Preserve current product-only fields during a compatibility period if practical. |
+### 17.4 Current Mixed Outfit Responses
 
-Creating an outfit with both sources may later accept separate `productIds` and
-`wardrobeItemIds`, or a discriminated `items` array. The final choice should be made with a
-versioning plan and must not reinterpret the existing MVP `productIds` field.
+`OutfitSummary` and `OutfitDetail` include:
+
+- `productCount`: catalog products only.
+- `wardrobeItemCount`: wardrobe items only.
+- `itemCount`: total of both source types.
+- `productsPreview`: legacy catalog-only preview.
+- `itemsPreview`: merged mixed preview ordered by `addedAt`.
+- `products`: legacy full catalog list on detail responses.
+- `items`: full mixed collection on detail responses.
+
+A wardrobe mixed-item payload includes `id`, `title`, `category`, nullable `color`, `status`,
+nullable `primaryMedia`, and relationship `addedAt`. Existing outfit creation accepts catalog
+`productIds` only; wardrobe items are added after creation through the endpoints in Section 8.
 
 ### 17.5 Phase 3 Planned Data Shapes
 

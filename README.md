@@ -246,6 +246,10 @@ Shared mobile and admin UI rules are documented in
 - Active product catalog, pagination, search, filters, filter options, and product detail
 - Default wishlist add, remove, list, and backend newest/oldest sorting
 - Saved outfit create, list, detail, rename, delete, product add, and product remove
+- Authenticated Digital Wardrobe CRUD with search, filtering, status management,
+  and local development media upload
+- Mixed outfits containing catalog products and active wardrobe items, with
+  additive mixed counts, previews, detail rendering, and item removal
 - Retailer redirect recording followed by external URL opening
 - PostgreSQL analytics-event storage and admin event/redirect review
 - Separate admin authentication and persisted admin session
@@ -292,6 +296,15 @@ release builds.
   product detail first. Wishlist/outfit sorting controls are not exposed.
 - Product descriptions, available colors, and tags are returned by the backend
   but are not displayed in the mobile product detail screen.
+- Wardrobe media is stored on the backend local filesystem and served through
+  permanent static development URLs. Private object storage, signed read URLs,
+  image-content validation, metadata stripping, and durable deletion retries
+  are not implemented.
+- Wardrobe analytics currently records create, update, and delete only. Open,
+  view, archive, restore, media failure, mixed outfit add/remove, and mixed-save
+  events are not implemented.
+- New outfits cannot be created with a wardrobe item in one request. Create an
+  outfit first, then add an active wardrobe item from its detail screen.
 - Seed products use placeholder images and example retailer URLs. Real approved
   retailer data required for pre-launch shopping validation has not been added.
 - Backend CORS uses an explicit environment allowlist. Production reverse-proxy

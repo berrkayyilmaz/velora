@@ -178,6 +178,32 @@ Not implemented yet:
 - `DELETE /api/v1/outfits/:id`
 - `POST /api/v1/outfits/:id/products`
 - `DELETE /api/v1/outfits/:id/products/:productId`
+- `POST /api/v1/outfits/:id/wardrobe-items`
+- `DELETE /api/v1/outfits/:id/wardrobe-items/:wardrobeItemId`
+
+Outfit list and detail responses retain the catalog-only `products`,
+`productsPreview`, and `productCount` fields. Mixed outfits additionally return
+`wardrobeItemCount`, total `itemCount`, and discriminated `items` or
+`itemsPreview` collections.
+
+### Digital Wardrobe
+
+- `GET /api/v1/wardrobe`
+- `POST /api/v1/wardrobe`
+- `GET /api/v1/wardrobe/:id`
+- `PATCH /api/v1/wardrobe/:id`
+- `DELETE /api/v1/wardrobe/:id`
+- `POST /api/v1/wardrobe/:id/media`
+- `DELETE /api/v1/wardrobe/:id/media/:mediaId`
+
+All wardrobe routes require a user JWT and enforce item ownership. Media upload
+uses `multipart/form-data` with one `file` field. JPEG, PNG, and WebP are
+accepted up to 10 MB.
+
+Wardrobe items start as draft. An item can become active only after ready media
+exists. Deleting the last media from an active item returns it to draft;
+archived status is unchanged. Only active items with primary media can be added
+to an outfit.
 
 ### Retailer Redirects
 
@@ -240,5 +266,8 @@ entire batch when one row is invalid.
 - Unexpected backend errors are logged and returned with a safe common error
   envelope. Route validation and known service errors retain their specific
   error codes.
+- Wardrobe media uses local development storage under
+  `backend/storage/wardrobe` and is served from `/uploads/wardrobe`. This is not
+  private managed object storage and must be replaced before a public release.
 - Product deletion is implemented as soft deletion by setting `isActive` to `false`.
 - Seed data uses safe placeholder images and example retailer URLs.
