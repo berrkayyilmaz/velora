@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from src.benchmark.models import BenchmarkResult
-from src.benchmark.output import write_benchmark_result, write_dummy_artifact
+from src.benchmark.output import write_benchmark_result, write_provider_artifact
 from src.providers import Provider, ProviderRequest
 
 
@@ -24,7 +24,7 @@ def run_provider_benchmark(
 
     try:
         provider_result = provider.execute(request)
-        output_path = str(write_dummy_artifact(output_dir, provider_result))
+        output_path = str(write_provider_artifact(output_dir, provider_result))
         status = provider_result.status
     except Exception as error:  # noqa: BLE001 - failures must produce benchmark results.
         status = "failed"

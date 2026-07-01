@@ -83,6 +83,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     batch_parser.add_argument("--run-id", help="Optional filesystem-safe run identifier.")
 
+    echo_parser = subparsers.add_parser(
+        "echo",
+        help="Run the file-based echo provider across a dataset manifest.",
+    )
+    echo_parser.add_argument(
+        "--config",
+        type=Path,
+        default=Path("config/example.runner.json"),
+        help="Runner JSON configuration path.",
+    )
+    echo_parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path("config/example.dataset.json"),
+        help="Benchmark dataset manifest JSON path.",
+    )
+    echo_parser.add_argument("--run-id", help="Optional filesystem-safe run identifier.")
+
     report_parser = subparsers.add_parser(
         "report",
         help="Generate a Markdown report from a persisted benchmark batch.",
@@ -163,6 +181,22 @@ def execute_dummy_batch(args: argparse.Namespace) -> int:
     return 0 if summary.failure_count == 0 else 1
 
 
+def execute_echo_batch(args: argparse.Namespace) -> int:
+    """Run the echo provider across one validated dataset manifest."""
+    config = load_runner_config(args.config).with_overrides(provider="echo")
+    manifest = load_dataset_manifest(args.manifest)
+    provider = create_provider_registry().get(config.provider)
+    run_id = args.run_id or create_run_id(provider.provider_id)
+    summary = run_benchmark_batch(
+        provider=provider,
+        manifest=manifest,
+        config=config,
+        run_id=run_id,
+    )
+    print(json.dumps(summary.to_payload(), indent=2, sort_keys=True))
+    return 0 if summary.failure_count == 0 else 1
+
+
 def generate_report(args: argparse.Namespace) -> int:
     """Generate a Markdown report from persisted benchmark JSON."""
     output_path = generate_benchmark_report(args.summary, args.output)
@@ -190,6 +224,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "dummy-batch":
         try:
             return execute_dummy_batch(args)
+        except (DatasetManifestError, RunnerConfigError, ValueError) as error:
+            parser.error(str(error))
+
+    if args.command == "echo":
+        try:
+            return execute_echo_batch(args)
         except (DatasetManifestError, RunnerConfigError, ValueError) as error:
             parser.error(str(error))
 

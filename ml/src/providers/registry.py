@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from src.providers.base import Provider
 from src.providers.dummy import DummyProvider
+from src.providers.echo import EchoProvider
 
 
 class ProviderRegistry:
@@ -34,4 +35,5 @@ def create_provider_registry() -> ProviderRegistry:
     """Create the provider registry available to the local CLI."""
     registry = ProviderRegistry()
     registry.register(DummyProvider())
+    registry.register(EchoProvider())
     return registry

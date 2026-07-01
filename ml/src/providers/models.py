@@ -19,6 +19,7 @@ class ProviderRequest:
     target_width: int
     target_height: int
     seed: int
+    mask_asset: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

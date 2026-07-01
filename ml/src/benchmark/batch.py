@@ -50,6 +50,9 @@ def run_benchmark_batch(
             target_width=config.image_size.width,
             target_height=config.image_size.height,
             seed=config.seed,
+            mask_asset=(
+                str(sample.mask_image_path) if sample.mask_image_path is not None else None
+            ),
         )
         results.append(run_provider_benchmark(provider, request, results_dir))
 

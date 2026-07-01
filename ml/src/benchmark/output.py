@@ -28,10 +28,20 @@ def _write_json(path: Path, payload: object) -> Path:
     return path
 
 
-def write_dummy_artifact(output_dir: Path, result: ProviderResult) -> Path:
-    """Write deterministic mock provider output without creating an image."""
+def write_provider_artifact(output_dir: Path, result: ProviderResult) -> Path:
+    """Write a deterministic provider placeholder without creating an image."""
     stem = _request_file_stem(result.request_id)
-    return _write_json(output_dir / f"{stem}.dummy-output.json", asdict(result))
+    provider_stem = re.sub(r"[^a-zA-Z0-9_-]+", "-", result.provider_id).strip("-_")
+    provider_stem = provider_stem or "provider"
+    return _write_json(
+        output_dir / f"{stem}.{provider_stem}-output.json",
+        asdict(result),
+    )
+
+
+def write_dummy_artifact(output_dir: Path, result: ProviderResult) -> Path:
+    """Write the existing deterministic dummy artifact."""
+    return write_provider_artifact(output_dir, result)
 
 
 def write_benchmark_result(output_dir: Path, result: BenchmarkResult) -> Path:

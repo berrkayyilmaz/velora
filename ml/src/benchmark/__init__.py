@@ -12,6 +12,7 @@ from src.benchmark.output import (
     write_benchmark_result,
     write_benchmark_summary,
     write_dummy_artifact,
+    write_provider_artifact,
 )
 from src.benchmark.report import BenchmarkReportError, generate_benchmark_report
 
@@ -28,4 +29,5 @@ __all__ = [
     "write_benchmark_result",
     "write_benchmark_summary",
     "write_dummy_artifact",
+    "write_provider_artifact",
 ]
