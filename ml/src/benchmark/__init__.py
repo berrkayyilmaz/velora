@@ -13,13 +13,16 @@ from src.benchmark.output import (
     write_benchmark_summary,
     write_dummy_artifact,
 )
+from src.benchmark.report import BenchmarkReportError, generate_benchmark_report
 
 __all__ = [
+    "BenchmarkReportError",
     "BenchmarkResult",
     "BenchmarkResultPayload",
     "BenchmarkRunSummary",
     "BenchmarkRunSummaryPayload",
     "create_run_id",
+    "generate_benchmark_report",
     "run_benchmark_batch",
     "run_provider_benchmark",
     "write_benchmark_result",

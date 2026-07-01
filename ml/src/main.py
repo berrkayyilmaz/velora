@@ -10,7 +10,13 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from src.benchmark import create_run_id, run_benchmark_batch, run_provider_benchmark
+from src.benchmark import (
+    BenchmarkReportError,
+    create_run_id,
+    generate_benchmark_report,
+    run_benchmark_batch,
+    run_provider_benchmark,
+)
 from src.datasets import DatasetManifestError, load_dataset_manifest
 from src.providers import ProviderRequest, create_provider_registry
 from src.runner import RunnerConfigError, load_runner_config
@@ -76,6 +82,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Benchmark dataset manifest JSON path.",
     )
     batch_parser.add_argument("--run-id", help="Optional filesystem-safe run identifier.")
+
+    report_parser = subparsers.add_parser(
+        "report",
+        help="Generate a Markdown report from a persisted benchmark batch.",
+    )
+    report_parser.add_argument("--summary", type=Path, required=True)
+    report_parser.add_argument("--output", type=Path, required=True)
 
     return parser
 
@@ -150,6 +163,13 @@ def execute_dummy_batch(args: argparse.Namespace) -> int:
     return 0 if summary.failure_count == 0 else 1
 
 
+def generate_report(args: argparse.Namespace) -> int:
+    """Generate a Markdown report from persisted benchmark JSON."""
+    output_path = generate_benchmark_report(args.summary, args.output)
+    print(output_path)
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse CLI arguments and execute the selected environment-only command."""
     parser = build_parser()
@@ -171,6 +191,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             return execute_dummy_batch(args)
         except (DatasetManifestError, RunnerConfigError, ValueError) as error:
+            parser.error(str(error))
+
+    if args.command == "report":
+        try:
+            return generate_report(args)
+        except BenchmarkReportError as error:
             parser.error(str(error))
 
     for key, value in environment_info().items():
