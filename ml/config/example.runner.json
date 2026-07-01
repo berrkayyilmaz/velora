@@ -1,0 +1,13 @@
+{
+  "provider": "catvton",
+  "device": "cuda:0",
+  "inputDir": "data/input/benchmarks/example",
+  "outputDir": "data/output/benchmarks",
+  "modelPath": "models/catvton",
+  "maxBatchSize": 1,
+  "imageSize": {
+    "width": 768,
+    "height": 1024
+  },
+  "seed": 42
+}
