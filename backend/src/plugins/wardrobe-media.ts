@@ -7,8 +7,7 @@ import fp from "fastify-plugin";
 
 import { LocalWardrobeMediaStorage } from "../services/storage/local-wardrobe-media-storage.js";
 import type { WardrobeMediaStorage } from "../services/storage/wardrobe-media-storage.js";
-
-export const MAX_WARDROBE_MEDIA_FILE_SIZE = 10 * 1024 * 1024;
+import { MAX_WARDROBE_MEDIA_FILE_SIZE } from "../utils/wardrobe-image.js";
 
 declare module "fastify" {
   interface FastifyInstance {

@@ -83,6 +83,15 @@ const wardrobeMediaRoutes: FastifyPluginCallback = (app, _options, done) => {
 
     const data = await file.toBuffer();
 
+    if (file.file.truncated) {
+      return reply.status(413).send({
+        error: {
+          code: "WARDROBE_MEDIA_TOO_LARGE",
+          message: "Wardrobe images must be 10 MB or smaller."
+        }
+      });
+    }
+
     try {
       const response = await uploadWardrobeMedia(
         app.prisma,

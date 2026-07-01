@@ -80,6 +80,8 @@ export async function createReadyWardrobeMedia(
     storageKey: string;
     mediaType: string;
     fileSize: number;
+    width: number;
+    height: number;
   }
 ): Promise<WardrobeMediaRecord> {
   return prisma.wardrobeItemMedia.create({
@@ -89,7 +91,9 @@ export async function createReadyWardrobeMedia(
       mediaType: input.mediaType,
       purpose: WardrobeItemMediaPurpose.PRIMARY,
       status: WardrobeItemMediaStatus.READY,
-      fileSize: input.fileSize
+      fileSize: input.fileSize,
+      width: input.width,
+      height: input.height
     },
     select: wardrobeMediaSelect
   });

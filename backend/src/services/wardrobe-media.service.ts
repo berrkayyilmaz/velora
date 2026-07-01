@@ -14,6 +14,10 @@ import type {
   WardrobeMediaResponse,
   WardrobeMediaResponseData
 } from "../schemas/wardrobe-media.schemas.js";
+import {
+  validateAndNormalizeWardrobeImage,
+  WardrobeImageValidationError
+} from "../utils/wardrobe-image.js";
 import type { WardrobeMediaStorage } from "./storage/wardrobe-media-storage.js";
 
 export class WardrobeMediaServiceError extends Error {
@@ -79,14 +83,28 @@ export async function uploadWardrobeMedia(
     );
   }
 
-  const storedMedia = await storage.save(input);
+  let validatedImage;
+
+  try {
+    validatedImage = await validateAndNormalizeWardrobeImage(input.data, input.mediaType);
+  } catch (error) {
+    if (error instanceof WardrobeImageValidationError) {
+      throw new WardrobeMediaServiceError(error.code, error.statusCode, error.message);
+    }
+
+    throw error;
+  }
+
+  const storedMedia = await storage.save(validatedImage);
 
   try {
     const media = await createReadyWardrobeMedia(prisma, {
       wardrobeItemId,
       storageKey: storedMedia.storageKey,
-      mediaType: input.mediaType,
-      fileSize: input.data.byteLength
+      mediaType: validatedImage.mediaType,
+      fileSize: validatedImage.data.byteLength,
+      width: validatedImage.width,
+      height: validatedImage.height
     });
 
     return {
