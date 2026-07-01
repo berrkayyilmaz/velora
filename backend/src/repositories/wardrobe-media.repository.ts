@@ -114,6 +114,23 @@ export async function findOwnedWardrobeMedia(
   });
 }
 
+export async function listOwnedWardrobeMediaForDeletion(
+  prisma: PrismaClient,
+  userId: string,
+  wardrobeItemId: string
+): Promise<WardrobeMediaRecord[]> {
+  return prisma.wardrobeItemMedia.findMany({
+    where: {
+      wardrobeItemId,
+      deletedAt: null,
+      wardrobeItem: {
+        userId
+      }
+    },
+    select: wardrobeMediaSelect
+  });
+}
+
 export async function markWardrobeMediaDeletionPending(
   prisma: PrismaClient,
   mediaId: string

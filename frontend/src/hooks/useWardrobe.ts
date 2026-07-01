@@ -1,11 +1,17 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
+import { outfitQueryKeys } from "@/hooks/useOutfits";
 import {
   createWardrobeItem,
   deleteWardrobeItem,
   getWardrobeItem,
   getWardrobeItems,
-  updateWardrobeItem
+  updateWardrobeItem,
 } from "@/services/wardrobe.service";
 import type { WardrobeListQuery } from "@/types/wardrobe";
 
@@ -14,10 +20,11 @@ const WARDROBE_PAGE_SIZE = 20;
 export const wardrobeQueryKeys = {
   all: ["wardrobe"] as const,
   lists: () => [...wardrobeQueryKeys.all, "list"] as const,
-  list: (query: WardrobeListQuery) => [...wardrobeQueryKeys.lists(), query] as const,
+  list: (query: WardrobeListQuery) =>
+    [...wardrobeQueryKeys.lists(), query] as const,
   details: () => [...wardrobeQueryKeys.all, "detail"] as const,
   detail: (wardrobeItemId: string) =>
-    [...wardrobeQueryKeys.details(), wardrobeItemId] as const
+    [...wardrobeQueryKeys.details(), wardrobeItemId] as const,
 };
 
 export function useWardrobeItems(query: WardrobeListQuery = {}) {
@@ -27,14 +34,14 @@ export function useWardrobeItems(query: WardrobeListQuery = {}) {
       getWardrobeItems({
         ...query,
         page: pageParam,
-        pageSize: WARDROBE_PAGE_SIZE
+        pageSize: WARDROBE_PAGE_SIZE,
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
       const pagination = lastPage.meta.pagination;
 
       return pagination.hasNextPage ? pagination.page + 1 : undefined;
-    }
+    },
   });
 }
 
@@ -48,7 +55,7 @@ export function useWardrobeItem(wardrobeItemId: string | undefined) {
 
       return getWardrobeItem(wardrobeItemId);
     },
-    enabled: wardrobeItemId !== undefined
+    enabled: wardrobeItemId !== undefined,
   });
 }
 
@@ -59,8 +66,10 @@ export function useCreateWardrobeItem() {
     mutationFn: createWardrobeItem,
     onSuccess: async (item) => {
       queryClient.setQueryData(wardrobeQueryKeys.detail(item.id), item);
-      await queryClient.invalidateQueries({ queryKey: wardrobeQueryKeys.lists() });
-    }
+      await queryClient.invalidateQueries({
+        queryKey: wardrobeQueryKeys.lists(),
+      });
+    },
   });
 }
 
@@ -71,8 +80,11 @@ export function useUpdateWardrobeItem() {
     mutationFn: updateWardrobeItem,
     onSuccess: async (item) => {
       queryClient.setQueryData(wardrobeQueryKeys.detail(item.id), item);
-      await queryClient.invalidateQueries({ queryKey: wardrobeQueryKeys.lists() });
-    }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: wardrobeQueryKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: outfitQueryKeys.all }),
+      ]);
+    },
   });
 }
 
@@ -82,8 +94,13 @@ export function useDeleteWardrobeItem() {
   return useMutation({
     mutationFn: deleteWardrobeItem,
     onSuccess: async (_success, wardrobeItemId) => {
-      queryClient.removeQueries({ queryKey: wardrobeQueryKeys.detail(wardrobeItemId) });
-      await queryClient.invalidateQueries({ queryKey: wardrobeQueryKeys.lists() });
-    }
+      queryClient.removeQueries({
+        queryKey: wardrobeQueryKeys.detail(wardrobeItemId),
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: wardrobeQueryKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: outfitQueryKeys.all }),
+      ]);
+    },
   });
 }

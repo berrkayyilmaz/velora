@@ -1,7 +1,10 @@
 import type { Prisma, PrismaClient, WardrobeItemStatus } from "@prisma/client";
 
 import { createAnalyticsEvent } from "../repositories/analytics.repository.js";
-import { hasReadyWardrobeMedia } from "../repositories/wardrobe-media.repository.js";
+import {
+  hasReadyWardrobeMedia,
+  listOwnedWardrobeMediaForDeletion
+} from "../repositories/wardrobe-media.repository.js";
 import {
   createUserWardrobeItem,
   deleteUserWardrobeItem,
@@ -164,6 +167,12 @@ export async function updateWardrobeItem(
   wardrobeItemId: string,
   input: UpdateWardrobeItemRequest
 ): Promise<WardrobeItemResponse> {
+  const existingItem = await findUserWardrobeItemById(prisma, userId, wardrobeItemId);
+
+  if (existingItem === null) {
+    throw new WardrobeServiceError("WARDROBE_ITEM_NOT_FOUND", 404, "Wardrobe item was not found.");
+  }
+
   if (input.categoryId !== undefined) {
     await validateCategory(prisma, input.categoryId);
   }
@@ -199,9 +208,22 @@ export async function updateWardrobeItem(
 
 export async function deleteWardrobeItem(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   wardrobeItemId: string
 ): Promise<DeleteWardrobeItemResponse> {
+  const existingItem = await findUserWardrobeItemById(prisma, userId, wardrobeItemId);
+
+  if (existingItem === null) {
+    throw new WardrobeServiceError("WARDROBE_ITEM_NOT_FOUND", 404, "Wardrobe item was not found.");
+  }
+
+  const media = await listOwnedWardrobeMediaForDeletion(prisma, userId, wardrobeItemId);
+
+  for (const itemMedia of media) {
+    await storage.delete(itemMedia.storageKey);
+  }
+
   const deletedCount = await deleteUserWardrobeItem(prisma, userId, wardrobeItemId);
 
   if (deletedCount === 0) {

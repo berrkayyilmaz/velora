@@ -153,6 +153,7 @@ const wardrobeRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const response = await deleteWardrobeItem(
         app.prisma,
+        app.wardrobeMediaStorage,
         getAuthenticatedUserId(request),
         parsedParams.data.id
       );
