@@ -9,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { FormField } from "@/components/forms/FormField";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { OutfitProductRow } from "@/components/outfits/OutfitProductRow";
+import { OutfitWardrobeItemRow } from "@/components/outfits/OutfitWardrobeItemRow";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -20,6 +21,7 @@ import {
   useDeleteOutfit,
   useOutfit,
   useRemoveProductFromOutfit,
+  useRemoveWardrobeItemFromOutfit,
   useUpdateOutfit
 } from "@/hooks/useOutfits";
 import { useRetailerRedirect } from "@/hooks/useRetailerRedirect";
@@ -28,7 +30,7 @@ import {
   outfitNameFormSchema,
   type OutfitNameFormValues
 } from "@/schemas/outfit.schemas";
-import type { ProductSummary } from "@/types/product";
+import type { MixedOutfitItem } from "@/types/outfit";
 import { getApiErrorMessage } from "@/utils/api-error";
 
 export function OutfitDetailScreen() {
@@ -40,6 +42,7 @@ export function OutfitDetailScreen() {
   const updateOutfitMutation = useUpdateOutfit();
   const deleteOutfitMutation = useDeleteOutfit();
   const removeProductMutation = useRemoveProductFromOutfit();
+  const removeWardrobeItemMutation = useRemoveWardrobeItemFromOutfit();
   const retailerRedirectMutation = useRetailerRedirect();
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -88,6 +91,13 @@ export function OutfitDetailScreen() {
     }
   };
 
+  const removeWardrobeItem = (wardrobeItemId: string) => {
+    if (outfitId !== undefined) {
+      removeWardrobeItemMutation.reset();
+      removeWardrobeItemMutation.mutate({ outfitId, wardrobeItemId });
+    }
+  };
+
   const openRetailer = (productId: string) => {
     if (outfitId !== undefined) {
       retailerRedirectMutation.reset();
@@ -99,23 +109,34 @@ export function OutfitDetailScreen() {
     }
   };
 
-  const renderProduct = ({ item }: { item: ProductSummary }) => (
-    <OutfitProductRow
-      isRemoving={
-        removeProductMutation.isPending &&
-        removeProductMutation.variables?.productId === item.id
-      }
-      isOpeningRetailer={
-        retailerRedirectMutation.isPending &&
-        retailerRedirectMutation.variables?.productId === item.id
-      }
-      onRemove={removeProduct}
-      onViewRetailer={openRetailer}
-      product={item}
-      removeDisabled={removeProductMutation.isPending}
-      retailerDisabled={retailerRedirectMutation.isPending}
-    />
-  );
+  const renderItem = ({ item }: { item: MixedOutfitItem }) =>
+    item.type === "catalog_product" ? (
+      <OutfitProductRow
+        isRemoving={
+          removeProductMutation.isPending &&
+          removeProductMutation.variables?.productId === item.catalogProduct.id
+        }
+        isOpeningRetailer={
+          retailerRedirectMutation.isPending &&
+          retailerRedirectMutation.variables?.productId === item.catalogProduct.id
+        }
+        onRemove={removeProduct}
+        onViewRetailer={openRetailer}
+        product={item.catalogProduct}
+        removeDisabled={removeProductMutation.isPending}
+        retailerDisabled={retailerRedirectMutation.isPending}
+      />
+    ) : (
+      <OutfitWardrobeItemRow
+        isRemoving={
+          removeWardrobeItemMutation.isPending &&
+          removeWardrobeItemMutation.variables?.wardrobeItemId === item.wardrobeItem.id
+        }
+        onRemove={removeWardrobeItem}
+        removeDisabled={removeWardrobeItemMutation.isPending}
+        wardrobeItem={item.wardrobeItem}
+      />
+    );
   const goBack = () => {
     if (router.canGoBack()) {
       router.back();
@@ -140,16 +161,16 @@ export function OutfitDetailScreen() {
       ) : (
         <FlatList
           contentContainerStyle={{
-            flexGrow: outfitQuery.data.products.length === 0 ? 1 : undefined,
+            flexGrow: outfitQuery.data.items.length === 0 ? 1 : undefined,
             paddingHorizontal: 16,
             paddingBottom: 32
           }}
-          data={outfitQuery.data.products}
-          keyExtractor={(product) => product.id}
+          data={outfitQuery.data.items}
+          keyExtractor={(item) => `${item.type}:${item.id}`}
           ListEmptyComponent={
             <EmptyState
-              description="Add products from a product detail page."
-              title="This outfit has no products yet"
+              description="Add catalog products or wardrobe items."
+              title="This outfit has no items yet"
             />
           }
           ListHeaderComponent={
@@ -185,8 +206,8 @@ export function OutfitDetailScreen() {
                     {outfitQuery.data.name}
                   </Text>
                   <Text className="text-label text-muted-foreground dark:text-muted-foreground-dark">
-                    {outfitQuery.data.productCount}{" "}
-                    {outfitQuery.data.productCount === 1 ? "product" : "products"}
+                    {outfitQuery.data.itemCount}{" "}
+                    {outfitQuery.data.itemCount === 1 ? "item" : "items"}
                   </Text>
                   {outfitQuery.data.includedCategories.length > 0 ? (
                     <View className="flex-row flex-wrap gap-2">
@@ -271,6 +292,12 @@ export function OutfitDetailScreen() {
                 </Text>
               ) : null}
 
+              {removeWardrobeItemMutation.isError ? (
+                <Text className="text-label text-destructive dark:text-destructive-dark">
+                  {getApiErrorMessage(removeWardrobeItemMutation.error)}
+                </Text>
+              ) : null}
+
               {retailerRedirectMutation.isError ? (
                 <Text className="text-label text-destructive dark:text-destructive-dark">
                   {getApiErrorMessage(retailerRedirectMutation.error)}
@@ -278,11 +305,11 @@ export function OutfitDetailScreen() {
               ) : null}
 
               <Text className="text-heading font-semibold text-foreground dark:text-foreground-dark">
-                Products
+                Items
               </Text>
             </View>
           }
-          renderItem={renderProduct}
+          renderItem={renderItem}
         />
       )}
     </SafeAreaView>
