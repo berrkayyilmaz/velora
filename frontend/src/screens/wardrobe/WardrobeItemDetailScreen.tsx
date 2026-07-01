@@ -1,12 +1,19 @@
 import { isAxiosError } from "axios";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ImagePlus, Image as ImageIcon, Pencil, Trash2 } from "lucide-react-native";
+import {
+  ImagePlus,
+  Image as ImageIcon,
+  Pencil,
+  Shirt,
+  Trash2
+} from "lucide-react-native";
 import { useState } from "react";
 import { Platform, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProductImage } from "@/components/products/ProductImage";
+import { AddWardrobeItemToOutfitModal } from "@/components/outfits/AddWardrobeItemToOutfitModal";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -106,6 +113,8 @@ export function WardrobeItemDetailScreen() {
   const deleteMediaMutation = useDeleteWardrobeMedia();
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isConfirmingMediaDelete, setIsConfirmingMediaDelete] = useState(false);
+  const [isOutfitModalVisible, setIsOutfitModalVisible] = useState(false);
+  const [outfitSuccessMessage, setOutfitSuccessMessage] = useState<string | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
   const isNotFound =
     wardrobeItemId === undefined ||
@@ -239,6 +248,12 @@ export function WardrobeItemDetailScreen() {
             </Text>
           ) : null}
 
+          {outfitSuccessMessage === null ? null : (
+            <Text className="text-label text-success dark:text-success-dark">
+              {outfitSuccessMessage}
+            </Text>
+          )}
+
           {wardrobeItemQuery.data.status === "draft" ? (
             <Card className="border-accent p-4 dark:border-accent-dark">
               <Text className="text-label font-semibold text-accent dark:text-accent-dark">
@@ -354,7 +369,47 @@ export function WardrobeItemDetailScreen() {
               Delete
             </Button>
           </View>
+
+          {wardrobeItemQuery.data.status === "active" &&
+          wardrobeItemQuery.data.primaryMedia !== null ? (
+            <Button
+              leftIcon={<Shirt color={colors.primaryForeground} size={18} />}
+              onPress={() => {
+                setOutfitSuccessMessage(null);
+                setIsOutfitModalVisible(true);
+              }}
+              size="lg"
+            >
+              Add to Outfit
+            </Button>
+          ) : (
+            <Card className="gap-3 p-4">
+              <Button
+                disabled
+                leftIcon={<Shirt color={colors.mutedForeground} size={18} />}
+                size="lg"
+                variant="outline"
+              >
+                Add to Outfit
+              </Button>
+              <Text className="text-center text-caption text-muted-foreground dark:text-muted-foreground-dark">
+                Upload an image and set this item to Active before adding it to an outfit.
+              </Text>
+            </Card>
+          )}
         </ScrollView>
+      )}
+
+      {wardrobeItemQuery.data === undefined || wardrobeItemId === undefined ? null : (
+        <AddWardrobeItemToOutfitModal
+          onAdded={(outfit) =>
+            setOutfitSuccessMessage(`Added to ${outfit.name}.`)
+          }
+          onClose={() => setIsOutfitModalVisible(false)}
+          visible={isOutfitModalVisible}
+          wardrobeItemId={wardrobeItemId}
+          wardrobeItemTitle={wardrobeItemQuery.data.title}
+        />
       )}
 
       <Modal
