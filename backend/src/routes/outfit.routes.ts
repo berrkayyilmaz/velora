@@ -70,6 +70,7 @@ const outfitRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const outfits = await listOutfits(
         app.prisma,
+        app.wardrobeMediaStorage,
         getAuthenticatedUserId(request),
         parsedQuery.data
       );
@@ -91,6 +92,7 @@ const outfitRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const outfit = await createOutfit(
         app.prisma,
+        app.wardrobeMediaStorage,
         getAuthenticatedUserId(request),
         parsedBody.data
       );
@@ -112,6 +114,7 @@ const outfitRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const outfit = await getOutfitDetail(
         app.prisma,
+        app.wardrobeMediaStorage,
         getAuthenticatedUserId(request),
         parsedParams.data.id
       );
@@ -139,6 +142,7 @@ const outfitRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const outfit = await updateOutfit(
         app.prisma,
+        app.wardrobeMediaStorage,
         getAuthenticatedUserId(request),
         parsedParams.data.id,
         parsedBody.data
@@ -188,6 +192,7 @@ const outfitRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const result = await addProductToOutfit(
         app.prisma,
+        app.wardrobeMediaStorage,
         getAuthenticatedUserId(request),
         parsedParams.data.id,
         parsedBody.data.productId
@@ -213,6 +218,7 @@ const outfitRoutes: FastifyPluginCallback = (app, _options, done) => {
       try {
         const outfit = await removeProductFromOutfit(
           app.prisma,
+          app.wardrobeMediaStorage,
           getAuthenticatedUserId(request),
           parsedParams.data.id,
           parsedParams.data.productId
@@ -242,6 +248,7 @@ const outfitRoutes: FastifyPluginCallback = (app, _options, done) => {
     try {
       const result = await addWardrobeItemToOutfit(
         app.prisma,
+        app.wardrobeMediaStorage,
         getAuthenticatedUserId(request),
         parsedParams.data.id,
         parsedBody.data.wardrobeItemId
@@ -267,6 +274,7 @@ const outfitRoutes: FastifyPluginCallback = (app, _options, done) => {
       try {
         const outfit = await removeWardrobeItemFromOutfit(
           app.prisma,
+          app.wardrobeMediaStorage,
           getAuthenticatedUserId(request),
           parsedParams.data.id,
           parsedParams.data.wardrobeItemId

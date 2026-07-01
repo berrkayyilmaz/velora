@@ -18,7 +18,8 @@ import {
   updateUserOutfit,
   type OutfitDetailRecord,
   type OutfitSummaryRecord,
-  type ProductSummaryRecord
+  type ProductSummaryRecord,
+  type WardrobeItemSummaryRecord
 } from "../repositories/outfit.repository.js";
 import type {
   CatalogRecordResponse,
@@ -28,9 +29,12 @@ import type {
   OutfitListQuery,
   OutfitListResponse,
   OutfitSummaryResponse,
+  MixedOutfitItemResponse,
   ProductSummaryResponse,
   UpdateOutfitRequest
 } from "../schemas/outfit.schemas.js";
+import type { WardrobeMediaStorage } from "./storage/wardrobe-media-storage.js";
+import { toWardrobeMedia } from "./wardrobe-media.service.js";
 
 export class OutfitServiceError extends Error {
   constructor(
@@ -70,24 +74,48 @@ function toProductSummary(
   };
 }
 
-function uniqueCategories(products: ProductSummaryRecord[]): CatalogRecordResponse[] {
+function toWardrobeItemSummary(
+  wardrobeItem: WardrobeItemSummaryRecord,
+  storage: WardrobeMediaStorage
+) {
+  return {
+    id: wardrobeItem.id,
+    title: wardrobeItem.title,
+    category: wardrobeItem.category,
+    color: wardrobeItem.color,
+    status: wardrobeItem.status.toLowerCase() as
+      | "draft"
+      | "active"
+      | "archived"
+      | "deletion_pending",
+    primaryMedia:
+      wardrobeItem.media[0] === undefined ? null : toWardrobeMedia(wardrobeItem.media[0], storage)
+  };
+}
+
+function uniqueCategories(
+  products: ProductSummaryRecord[],
+  wardrobeItems: WardrobeItemSummaryRecord[]
+): CatalogRecordResponse[] {
   const categories = new Map<string, CatalogRecordResponse>();
 
   for (const product of products) {
     categories.set(product.category.id, product.category);
   }
 
+  for (const wardrobeItem of wardrobeItems) {
+    categories.set(wardrobeItem.category.id, wardrobeItem.category);
+  }
+
   return [...categories.values()];
 }
 
-function buildMissingCategoryHints(products: ProductSummaryRecord[]): string[] {
-  if (products.length === 0) {
+function buildMissingCategoryHints(categories: CatalogRecordResponse[]): string[] {
+  if (categories.length === 0) {
     return [];
   }
 
-  const includedCategoryNames = new Set(
-    products.map((product) => product.category.name.toLowerCase())
-  );
+  const includedCategoryNames = new Set(categories.map((category) => category.name.toLowerCase()));
   const hints: string[] = [];
 
   if (!includedCategoryNames.has("shoes")) {
@@ -107,17 +135,53 @@ function getOutfitProducts(
   return outfit.products.map((outfitProduct) => outfitProduct.product);
 }
 
+function getOutfitWardrobeItems(
+  outfit: OutfitDetailRecord | OutfitSummaryRecord
+): WardrobeItemSummaryRecord[] {
+  return outfit.wardrobeItems.map((outfitWardrobeItem) => outfitWardrobeItem.wardrobeItem);
+}
+
+function getMixedOutfitItems(
+  outfit: OutfitDetailRecord | OutfitSummaryRecord,
+  favoritedProductIds: Set<string>,
+  storage: WardrobeMediaStorage
+): MixedOutfitItemResponse[] {
+  const catalogItems: MixedOutfitItemResponse[] = outfit.products.map((outfitProduct) => ({
+    type: "catalog_product",
+    id: outfitProduct.id,
+    addedAt: outfitProduct.createdAt.toISOString(),
+    catalogProduct: toProductSummary(outfitProduct.product, favoritedProductIds)
+  }));
+  const wardrobeItems: MixedOutfitItemResponse[] = outfit.wardrobeItems.map(
+    (outfitWardrobeItem) => ({
+      type: "wardrobe_item",
+      id: outfitWardrobeItem.id,
+      addedAt: outfitWardrobeItem.createdAt.toISOString(),
+      wardrobeItem: toWardrobeItemSummary(outfitWardrobeItem.wardrobeItem, storage)
+    })
+  );
+
+  return [...catalogItems, ...wardrobeItems].sort(
+    (left, right) => new Date(left.addedAt).getTime() - new Date(right.addedAt).getTime()
+  );
+}
+
 function toOutfitSummary(
   outfit: OutfitSummaryRecord,
-  favoritedProductIds: Set<string>
+  favoritedProductIds: Set<string>,
+  storage: WardrobeMediaStorage
 ): OutfitSummaryResponse {
   const products = getOutfitProducts(outfit);
+  const itemsPreview = getMixedOutfitItems(outfit, favoritedProductIds, storage).slice(0, 4);
 
   return {
     id: outfit.id,
     name: outfit.name,
     productCount: outfit._count.products,
+    wardrobeItemCount: outfit._count.wardrobeItems,
+    itemCount: outfit._count.products + outfit._count.wardrobeItems,
     productsPreview: products.map((product) => toProductSummary(product, favoritedProductIds)),
+    itemsPreview,
     createdAt: outfit.createdAt.toISOString(),
     updatedAt: outfit.updatedAt.toISOString()
   };
@@ -125,20 +189,28 @@ function toOutfitSummary(
 
 function toOutfitDetail(
   outfit: OutfitDetailRecord,
-  favoritedProductIds: Set<string>
+  favoritedProductIds: Set<string>,
+  storage: WardrobeMediaStorage
 ): OutfitDetailResponse {
   const products = getOutfitProducts(outfit);
+  const wardrobeItems = getOutfitWardrobeItems(outfit);
+  const categories = uniqueCategories(products, wardrobeItems);
+  const items = getMixedOutfitItems(outfit, favoritedProductIds, storage);
 
   return {
     id: outfit.id,
     name: outfit.name,
     productCount: outfit._count.products,
+    wardrobeItemCount: outfit._count.wardrobeItems,
+    itemCount: outfit._count.products + outfit._count.wardrobeItems,
     productsPreview: products
       .slice(0, 4)
       .map((product) => toProductSummary(product, favoritedProductIds)),
+    itemsPreview: items.slice(0, 4),
     products: products.map((product) => toProductSummary(product, favoritedProductIds)),
-    includedCategories: uniqueCategories(products),
-    missingCategoryHints: buildMissingCategoryHints(products),
+    items,
+    includedCategories: categories,
+    missingCategoryHints: buildMissingCategoryHints(categories),
     createdAt: outfit.createdAt.toISOString(),
     updatedAt: outfit.updatedAt.toISOString()
   };
@@ -186,6 +258,7 @@ async function getOwnedOutfitOrThrow(
 
 export async function listOutfits(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   query: OutfitListQuery
 ): Promise<OutfitListResponse> {
@@ -195,7 +268,7 @@ export async function listOutfits(
 
   return {
     data: {
-      items: outfits.map((outfit) => toOutfitSummary(outfit, favoritedProductIds))
+      items: outfits.map((outfit) => toOutfitSummary(outfit, favoritedProductIds, storage))
     },
     meta: {
       pagination: {
@@ -210,6 +283,7 @@ export async function listOutfits(
 
 export async function createOutfit(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   input: CreateOutfitRequest
 ): Promise<OutfitDetailResponse> {
@@ -223,11 +297,12 @@ export async function createOutfit(
   const products = getOutfitProducts(outfit);
   const favoritedProductIds = await findFavoritedIdsForProducts(prisma, userId, products);
 
-  return toOutfitDetail(outfit, favoritedProductIds);
+  return toOutfitDetail(outfit, favoritedProductIds, storage);
 }
 
 export async function getOutfitDetail(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   outfitId: string
 ): Promise<OutfitDetailResponse> {
@@ -235,11 +310,12 @@ export async function getOutfitDetail(
   const products = getOutfitProducts(outfit);
   const favoritedProductIds = await findFavoritedIdsForProducts(prisma, userId, products);
 
-  return toOutfitDetail(outfit, favoritedProductIds);
+  return toOutfitDetail(outfit, favoritedProductIds, storage);
 }
 
 export async function updateOutfit(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   outfitId: string,
   input: UpdateOutfitRequest
@@ -253,7 +329,7 @@ export async function updateOutfit(
   const products = getOutfitProducts(outfit);
   const favoritedProductIds = await findFavoritedIdsForProducts(prisma, userId, products);
 
-  return toOutfitDetail(outfit, favoritedProductIds);
+  return toOutfitDetail(outfit, favoritedProductIds, storage);
 }
 
 export async function deleteOutfit(
@@ -276,6 +352,7 @@ export async function deleteOutfit(
 
 export async function addProductToOutfit(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   outfitId: string,
   productId: string
@@ -287,7 +364,7 @@ export async function addProductToOutfit(
 
   if (existingOutfitProduct !== null) {
     return {
-      response: await getOutfitDetail(prisma, userId, outfitId),
+      response: await getOutfitDetail(prisma, storage, userId, outfitId),
       created: false
     };
   }
@@ -300,19 +377,20 @@ export async function addProductToOutfit(
     }
 
     return {
-      response: await getOutfitDetail(prisma, userId, outfitId),
+      response: await getOutfitDetail(prisma, storage, userId, outfitId),
       created: false
     };
   }
 
   return {
-    response: await getOutfitDetail(prisma, userId, outfitId),
+    response: await getOutfitDetail(prisma, storage, userId, outfitId),
     created: true
   };
 }
 
 export async function removeProductFromOutfit(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   outfitId: string,
   productId: string
@@ -329,7 +407,7 @@ export async function removeProductFromOutfit(
     );
   }
 
-  return getOutfitDetail(prisma, userId, outfitId);
+  return getOutfitDetail(prisma, storage, userId, outfitId);
 }
 
 async function getOwnedWardrobeItemOrThrow(
@@ -348,6 +426,7 @@ async function getOwnedWardrobeItemOrThrow(
 
 export async function addWardrobeItemToOutfit(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   outfitId: string,
   wardrobeItemId: string
@@ -367,7 +446,7 @@ export async function addWardrobeItemToOutfit(
 
   if (existingItem !== null) {
     return {
-      response: await getOutfitDetail(prisma, userId, outfitId),
+      response: await getOutfitDetail(prisma, storage, userId, outfitId),
       created: false
     };
   }
@@ -380,19 +459,20 @@ export async function addWardrobeItemToOutfit(
     }
 
     return {
-      response: await getOutfitDetail(prisma, userId, outfitId),
+      response: await getOutfitDetail(prisma, storage, userId, outfitId),
       created: false
     };
   }
 
   return {
-    response: await getOutfitDetail(prisma, userId, outfitId),
+    response: await getOutfitDetail(prisma, storage, userId, outfitId),
     created: true
   };
 }
 
 export async function removeWardrobeItemFromOutfit(
   prisma: PrismaClient,
+  storage: WardrobeMediaStorage,
   userId: string,
   outfitId: string,
   wardrobeItemId: string
@@ -410,5 +490,5 @@ export async function removeWardrobeItemFromOutfit(
     );
   }
 
-  return getOutfitDetail(prisma, userId, outfitId);
+  return getOutfitDetail(prisma, storage, userId, outfitId);
 }

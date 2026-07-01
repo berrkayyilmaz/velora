@@ -10,6 +10,7 @@ import type {
   OutfitListQuery,
   UpdateOutfitRequest
 } from "../schemas/outfit.schemas.js";
+import { wardrobeMediaSelect } from "./wardrobe-media.repository.js";
 
 const OUTFIT_PREVIEW_PRODUCT_LIMIT = 4;
 
@@ -44,6 +45,33 @@ const outfitProductSelect = {
   }
 } satisfies Prisma.OutfitProductSelect;
 
+const wardrobeItemSummarySelect = {
+  id: true,
+  title: true,
+  color: true,
+  status: true,
+  category: {
+    select: catalogRecordSelect
+  },
+  media: {
+    where: {
+      purpose: WardrobeItemMediaPurpose.PRIMARY,
+      status: WardrobeItemMediaStatus.READY,
+      deletedAt: null
+    },
+    select: wardrobeMediaSelect,
+    take: 1
+  }
+} satisfies Prisma.WardrobeItemSelect;
+
+const outfitWardrobeItemSelect = {
+  id: true,
+  createdAt: true,
+  wardrobeItem: {
+    select: wardrobeItemSummarySelect
+  }
+} satisfies Prisma.OutfitWardrobeItemSelect;
+
 const outfitSummarySelect = {
   id: true,
   name: true,
@@ -51,11 +79,19 @@ const outfitSummarySelect = {
   updatedAt: true,
   _count: {
     select: {
-      products: true
+      products: true,
+      wardrobeItems: true
     }
   },
   products: {
     select: outfitProductSelect,
+    orderBy: {
+      createdAt: "asc"
+    },
+    take: OUTFIT_PREVIEW_PRODUCT_LIMIT
+  },
+  wardrobeItems: {
+    select: outfitWardrobeItemSelect,
     orderBy: {
       createdAt: "asc"
     },
@@ -70,11 +106,18 @@ const outfitDetailSelect = {
   updatedAt: true,
   _count: {
     select: {
-      products: true
+      products: true,
+      wardrobeItems: true
     }
   },
   products: {
     select: outfitProductSelect,
+    orderBy: {
+      createdAt: "asc"
+    }
+  },
+  wardrobeItems: {
+    select: outfitWardrobeItemSelect,
     orderBy: {
       createdAt: "asc"
     }
@@ -97,10 +140,9 @@ export type OutfitDetailRecord = Prisma.OutfitGetPayload<{
   select: typeof outfitDetailSelect;
 }>;
 
-const outfitWardrobeItemSelect = {
-  id: true,
-  createdAt: true
-} satisfies Prisma.OutfitWardrobeItemSelect;
+export type WardrobeItemSummaryRecord = Prisma.WardrobeItemGetPayload<{
+  select: typeof wardrobeItemSummarySelect;
+}>;
 
 export type OutfitWardrobeItemRecord = Prisma.OutfitWardrobeItemGetPayload<{
   select: typeof outfitWardrobeItemSelect;

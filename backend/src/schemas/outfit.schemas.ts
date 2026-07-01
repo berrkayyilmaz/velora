@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { wardrobeMediaSchema } from "./wardrobe-media.schemas.js";
+
 const uuidSchema = z.string().uuid();
 const outfitNameSchema = z.string().trim().min(1).max(100);
 
@@ -21,6 +23,34 @@ const productSummarySchema = z.object({
   isFavorited: z.boolean()
 });
 
+const wardrobeItemSummarySchema = z.object({
+  id: uuidSchema,
+  title: z.string(),
+  category: catalogRecordSchema,
+  color: z.string().nullable(),
+  status: z.enum(["draft", "active", "archived", "deletion_pending"]),
+  primaryMedia: wardrobeMediaSchema.nullable()
+});
+
+const mixedCatalogProductSchema = z.object({
+  type: z.literal("catalog_product"),
+  id: uuidSchema,
+  addedAt: z.string().datetime(),
+  catalogProduct: productSummarySchema
+});
+
+const mixedWardrobeItemSchema = z.object({
+  type: z.literal("wardrobe_item"),
+  id: uuidSchema,
+  addedAt: z.string().datetime(),
+  wardrobeItem: wardrobeItemSummarySchema
+});
+
+const mixedOutfitItemSchema = z.discriminatedUnion("type", [
+  mixedCatalogProductSchema,
+  mixedWardrobeItemSchema
+]);
+
 const paginationSchema = z.object({
   page: z.number().int().positive(),
   pageSize: z.number().int().positive(),
@@ -32,13 +62,17 @@ const outfitSummarySchema = z.object({
   id: uuidSchema,
   name: z.string(),
   productCount: z.number().int().nonnegative(),
+  wardrobeItemCount: z.number().int().nonnegative(),
+  itemCount: z.number().int().nonnegative(),
   productsPreview: z.array(productSummarySchema),
+  itemsPreview: z.array(mixedOutfitItemSchema),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 });
 
 const outfitDetailSchema = outfitSummarySchema.extend({
   products: z.array(productSummarySchema),
+  items: z.array(mixedOutfitItemSchema),
   includedCategories: z.array(catalogRecordSchema),
   missingCategoryHints: z.array(z.string())
 });
@@ -125,6 +159,8 @@ export type UpdateOutfitRequest = z.infer<typeof updateOutfitRequestSchema>;
 export type AddOutfitProductRequest = z.infer<typeof addOutfitProductRequestSchema>;
 export type AddOutfitWardrobeItemRequest = z.infer<typeof addOutfitWardrobeItemRequestSchema>;
 export type ProductSummaryResponse = z.infer<typeof productSummarySchema>;
+export type WardrobeItemSummaryResponse = z.infer<typeof wardrobeItemSummarySchema>;
+export type MixedOutfitItemResponse = z.infer<typeof mixedOutfitItemSchema>;
 export type CatalogRecordResponse = z.infer<typeof catalogRecordSchema>;
 export type OutfitSummaryResponse = z.infer<typeof outfitSummarySchema>;
 export type OutfitDetailResponse = z.infer<typeof outfitDetailSchema>;
