@@ -13,5 +13,39 @@ backend/dist/
 backend/storage/*
 !backend/storage/.gitkeep
 
+# AI lab environments and caches
+ml/.venv/
+ml/venv/
+ml/**/__pycache__/
+ml/**/*.pyc
+ml/**/*.pyo
+ml/.pytest_cache/
+ml/.mypy_cache/
+ml/.ruff_cache/
+ml/.cache/
+ml/**/.ipynb_checkpoints/
+
+# AI model weights and checkpoints
+ml/**/*.pt
+ml/**/*.pth
+ml/**/*.ckpt
+ml/**/*.safetensors
+ml/**/*.onnx
+ml/**/*.engine
+ml/**/checkpoints/
+ml/checkpoints/
+ml/models/*
+!ml/models/.gitkeep
+
+# AI datasets, private inputs, and generated outputs
+ml/data/input/*
+!ml/data/input/.gitkeep
+ml/data/output/*
+!ml/data/output/.gitkeep
+ml/data/datasets/
+ml/datasets/
+ml/outputs/
+ml/runs/
+
 .DS_Store
 .vscode/
