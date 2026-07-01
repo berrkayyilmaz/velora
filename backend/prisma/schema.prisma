@@ -147,13 +147,14 @@ model WishlistItem {
 }
 
 model Outfit {
-  id              String           @id @default(uuid()) @db.Uuid
-  userId          String           @db.Uuid
+  id              String               @id @default(uuid()) @db.Uuid
+  userId          String               @db.Uuid
   name            String
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   products        OutfitProduct[]
+  wardrobeItems   OutfitWardrobeItem[]
   analyticsEvents AnalyticsEvent[]
   redirectEvents  RedirectEvent[]
 
@@ -176,21 +177,35 @@ model OutfitProduct {
   @@index([createdAt])
 }
 
+model OutfitWardrobeItem {
+  id             String       @id @default(uuid()) @db.Uuid
+  outfitId       String       @db.Uuid
+  wardrobeItemId String       @db.Uuid
+  createdAt      DateTime     @default(now())
+  outfit         Outfit       @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+  wardrobeItem   WardrobeItem @relation(fields: [wardrobeItemId], references: [id], onDelete: Cascade)
+
+  @@unique([outfitId, wardrobeItemId])
+  @@index([outfitId])
+  @@index([wardrobeItemId])
+}
+
 model WardrobeItem {
-  id              String             @id @default(uuid()) @db.Uuid
-  userId          String             @db.Uuid
-  categoryId      String             @db.Uuid
+  id              String               @id @default(uuid()) @db.Uuid
+  userId          String               @db.Uuid
+  categoryId      String               @db.Uuid
   title           String
   color           String?
   brandLabel      String?
   notes           String?
-  status          WardrobeItemStatus @default(DRAFT)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category        Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  status          WardrobeItemStatus   @default(DRAFT)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category        Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   analyticsEvents AnalyticsEvent[]
   media           WardrobeItemMedia[]
+  outfits         OutfitWardrobeItem[]
 
   @@index([userId, status, updatedAt])
   @@index([userId, categoryId])
