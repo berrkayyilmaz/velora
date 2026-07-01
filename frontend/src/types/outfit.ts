@@ -1,45 +1,23 @@
-import type { CatalogRecord, ProductSummary } from "@/types/product";
+import { z } from "zod";
+
+import {
+  mixedOutfitItemSchema,
+  outfitDetailResponseSchema,
+  outfitDetailSchema,
+  outfitListResponseSchema,
+  outfitSummarySchema,
+  outfitWardrobeItemSummarySchema
+} from "@/schemas/outfit.schemas";
 
 export type OutfitSort = "newest" | "oldest";
-
-export type OutfitSummary = {
-  id: string;
-  name: string;
-  productCount: number;
-  productsPreview: ProductSummary[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type OutfitDetail = OutfitSummary & {
-  products: ProductSummary[];
-  includedCategories: CatalogRecord[];
-  missingCategoryHints: string[];
-};
-
-export type OutfitListResponse = {
-  data: {
-    items: OutfitSummary[];
-  };
-  meta: {
-    pagination: {
-      page: number;
-      pageSize: number;
-      total: number;
-      hasNextPage: boolean;
-    };
-  };
-};
-
-export type OutfitDetailResponse = {
-  data: OutfitDetail;
-};
-
-export type DeleteOutfitResponse = {
-  data: {
-    success: boolean;
-  };
-};
+export type OutfitWardrobeItemSummary = z.infer<
+  typeof outfitWardrobeItemSummarySchema
+>;
+export type MixedOutfitItem = z.infer<typeof mixedOutfitItemSchema>;
+export type OutfitSummary = z.infer<typeof outfitSummarySchema>;
+export type OutfitDetail = z.infer<typeof outfitDetailSchema>;
+export type OutfitListResponse = z.infer<typeof outfitListResponseSchema>;
+export type OutfitDetailResponse = z.infer<typeof outfitDetailResponseSchema>;
 
 export type CreateOutfitInput = {
   name: string;
@@ -54,4 +32,9 @@ export type UpdateOutfitInput = {
 export type OutfitProductInput = {
   outfitId: string;
   productId: string;
+};
+
+export type OutfitWardrobeItemInput = {
+  outfitId: string;
+  wardrobeItemId: string;
 };

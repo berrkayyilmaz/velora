@@ -3,11 +3,13 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { useAnalytics } from "@/hooks/useAnalytics";
 import {
   addProductToOutfit,
+  addWardrobeItemToOutfit,
   createOutfit,
   deleteOutfit,
   getOutfit,
   getOutfits,
   removeProductFromOutfit,
+  removeWardrobeItemFromOutfit,
   updateOutfit
 } from "@/services/outfit.service";
 import type { OutfitSort } from "@/types/outfit";
@@ -147,6 +149,36 @@ export function useRemoveProductFromOutfit() {
         sourceScreen: "outfit"
       });
 
+      queryClient.setQueryData(outfitQueryKeys.detail(outfit.id), outfit);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: outfitQueryKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: outfitQueryKeys.detail(outfit.id) })
+      ]);
+    }
+  });
+}
+
+export function useAddWardrobeItemToOutfit() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: addWardrobeItemToOutfit,
+    onSuccess: async (outfit) => {
+      queryClient.setQueryData(outfitQueryKeys.detail(outfit.id), outfit);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: outfitQueryKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: outfitQueryKeys.detail(outfit.id) })
+      ]);
+    }
+  });
+}
+
+export function useRemoveWardrobeItemFromOutfit() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: removeWardrobeItemFromOutfit,
+    onSuccess: async (outfit) => {
       queryClient.setQueryData(outfitQueryKeys.detail(outfit.id), outfit);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: outfitQueryKeys.lists() }),
