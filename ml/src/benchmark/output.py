@@ -8,7 +8,7 @@ import re
 from dataclasses import asdict
 from pathlib import Path
 
-from src.benchmark.models import BenchmarkResult
+from src.benchmark.models import BenchmarkResult, BenchmarkRunSummary
 from src.providers.models import ProviderResult
 
 
@@ -38,3 +38,8 @@ def write_benchmark_result(output_dir: Path, result: BenchmarkResult) -> Path:
     """Write one benchmark result JSON file."""
     stem = _request_file_stem(result.request_id)
     return _write_json(output_dir / f"{stem}.benchmark-result.json", result.to_payload())
+
+
+def write_benchmark_summary(output_dir: Path, summary: BenchmarkRunSummary) -> Path:
+    """Write one batch benchmark summary JSON file."""
+    return _write_json(output_dir / "summary.json", summary.to_payload())

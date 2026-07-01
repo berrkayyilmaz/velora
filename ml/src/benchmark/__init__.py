@@ -1,11 +1,28 @@
-"""Benchmark result contracts and output helpers."""
+"""Benchmark execution, result contracts, and output helpers."""
 
-from src.benchmark.models import BenchmarkResult, BenchmarkResultPayload
-from src.benchmark.output import write_benchmark_result, write_dummy_artifact
+from src.benchmark.batch import create_run_id, run_benchmark_batch
+from src.benchmark.execution import run_provider_benchmark
+from src.benchmark.models import (
+    BenchmarkResult,
+    BenchmarkResultPayload,
+    BenchmarkRunSummary,
+    BenchmarkRunSummaryPayload,
+)
+from src.benchmark.output import (
+    write_benchmark_result,
+    write_benchmark_summary,
+    write_dummy_artifact,
+)
 
 __all__ = [
     "BenchmarkResult",
     "BenchmarkResultPayload",
+    "BenchmarkRunSummary",
+    "BenchmarkRunSummaryPayload",
+    "create_run_id",
+    "run_benchmark_batch",
+    "run_provider_benchmark",
     "write_benchmark_result",
+    "write_benchmark_summary",
     "write_dummy_artifact",
 ]

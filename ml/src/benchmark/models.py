@@ -24,6 +24,19 @@ class BenchmarkResultPayload(TypedDict):
     error: str | None
 
 
+class BenchmarkRunSummaryPayload(TypedDict):
+    """JSON-serializable batch benchmark summary schema."""
+
+    runId: str
+    provider: str
+    sampleCount: int
+    successCount: int
+    failureCount: int
+    averageDurationMs: float
+    startedAt: str
+    completedAt: str
+
+
 @dataclass(frozen=True, slots=True)
 class BenchmarkResult:
     """Result metadata for one provider benchmark execution."""
@@ -52,4 +65,31 @@ class BenchmarkResult:
             "status": self.status,
             "outputPath": self.output_path,
             "error": self.error,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class BenchmarkRunSummary:
+    """Aggregate metadata for one batch benchmark run."""
+
+    run_id: str
+    provider: str
+    sample_count: int
+    success_count: int
+    failure_count: int
+    average_duration_ms: float
+    started_at: datetime
+    completed_at: datetime
+
+    def to_payload(self) -> BenchmarkRunSummaryPayload:
+        """Return the camelCase JSON summary schema."""
+        return {
+            "runId": self.run_id,
+            "provider": self.provider,
+            "sampleCount": self.sample_count,
+            "successCount": self.success_count,
+            "failureCount": self.failure_count,
+            "averageDurationMs": self.average_duration_ms,
+            "startedAt": self.started_at.isoformat(),
+            "completedAt": self.completed_at.isoformat(),
         }

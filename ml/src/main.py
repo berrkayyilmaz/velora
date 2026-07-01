@@ -7,12 +7,10 @@ import json
 import os
 import platform
 import sys
-import time
 from collections.abc import Sequence
-from datetime import UTC, datetime
 from pathlib import Path
 
-from src.benchmark import BenchmarkResult, write_benchmark_result, write_dummy_artifact
+from src.benchmark import create_run_id, run_benchmark_batch, run_provider_benchmark
 from src.datasets import DatasetManifestError, load_dataset_manifest
 from src.providers import ProviderRequest, create_provider_registry
 from src.runner import RunnerConfigError, load_runner_config
@@ -61,6 +59,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Benchmark dataset manifest JSON path.",
     )
 
+    batch_parser = subparsers.add_parser(
+        "dummy-batch",
+        help="Run the dummy provider across a dataset manifest.",
+    )
+    batch_parser.add_argument(
+        "--config",
+        type=Path,
+        default=Path("config/example.runner.json"),
+        help="Runner JSON configuration path.",
+    )
+    batch_parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path("config/example.dataset.json"),
+        help="Benchmark dataset manifest JSON path.",
+    )
+    batch_parser.add_argument("--run-id", help="Optional filesystem-safe run identifier.")
+
     return parser
 
 
@@ -100,35 +116,9 @@ def execute_dummy_provider(args: argparse.Namespace) -> int:
         target_height=config.image_size.height,
         seed=config.seed,
     )
-    started_at = datetime.now(UTC)
-    started_clock = time.perf_counter()
-    output_path: str | None = None
-    error_message: str | None = None
-
-    try:
-        provider_result = provider.execute(request)
-        output_path = str(write_dummy_artifact(config.output_dir, provider_result))
-        status = provider_result.status
-    except Exception as error:  # noqa: BLE001 - benchmark failures must produce a result file.
-        status = "failed"
-        error_message = f"{type(error).__name__}: {error}"
-
-    completed_at = datetime.now(UTC)
-    benchmark_result = BenchmarkResult(
-        request_id=request.request_id,
-        provider=provider.provider_id,
-        provider_version=provider.provider_version,
-        seed=request.seed,
-        started_at=started_at,
-        completed_at=completed_at,
-        duration_ms=round((time.perf_counter() - started_clock) * 1000, 3),
-        status=status,
-        output_path=output_path,
-        error=error_message,
-    )
-    write_benchmark_result(config.output_dir, benchmark_result)
+    benchmark_result = run_provider_benchmark(provider, request, config.output_dir)
     print(json.dumps(benchmark_result.to_payload(), indent=2, sort_keys=True))
-    return 1 if error_message else 0
+    return 0 if benchmark_result.status == "succeeded" else 1
 
 
 def validate_manifest(args: argparse.Namespace) -> int:
@@ -142,6 +132,22 @@ def validate_manifest(args: argparse.Namespace) -> int:
     }
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
+
+
+def execute_dummy_batch(args: argparse.Namespace) -> int:
+    """Run the configured dummy provider across one dataset manifest."""
+    config = load_runner_config(args.config)
+    manifest = load_dataset_manifest(args.manifest)
+    provider = create_provider_registry().get(config.provider)
+    run_id = args.run_id or create_run_id(provider.provider_id)
+    summary = run_benchmark_batch(
+        provider=provider,
+        manifest=manifest,
+        config=config,
+        run_id=run_id,
+    )
+    print(json.dumps(summary.to_payload(), indent=2, sort_keys=True))
+    return 0 if summary.failure_count == 0 else 1
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -159,6 +165,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             return validate_manifest(args)
         except DatasetManifestError as error:
+            parser.error(str(error))
+
+    if args.command == "dummy-batch":
+        try:
+            return execute_dummy_batch(args)
+        except (DatasetManifestError, RunnerConfigError, ValueError) as error:
             parser.error(str(error))
 
     for key, value in environment_info().items():
