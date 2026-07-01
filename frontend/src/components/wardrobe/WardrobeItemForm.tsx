@@ -26,6 +26,7 @@ type WardrobeItemFormProps = {
 const statusOptions = [
   { label: "Unchanged", value: "" },
   { label: "Draft", value: "draft" },
+  { label: "Active", value: "active" },
   { label: "Archived", value: "archived" }
 ] as const;
 
@@ -164,6 +165,9 @@ export function WardrobeItemForm({
                   </Button>
                 ))}
               </View>
+              <Text className="text-caption text-muted-foreground dark:text-muted-foreground-dark">
+                Active items require an uploaded image.
+              </Text>
             </View>
           )}
         />

@@ -13,7 +13,7 @@ export const wardrobeItemStatusSchema = z.enum([
   "deletion_pending"
 ]);
 
-export const wardrobeEditableStatusSchema = z.enum(["draft", "archived"]);
+export const wardrobeEditableStatusSchema = z.enum(["draft", "active", "archived"]);
 export const wardrobeSortSchema = z.enum(["newest", "oldest"]);
 
 export const wardrobeListQuerySchema = z.object({

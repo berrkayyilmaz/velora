@@ -5,7 +5,7 @@ import { wardrobeMediaSchema } from "./wardrobe-media.schemas.js";
 const uuidSchema = z.string().uuid();
 const wardrobeItemTitleSchema = z.string().trim().min(1).max(120);
 const wardrobeItemStatusSchema = z.enum(["draft", "active", "archived", "deletion_pending"]);
-const editableWardrobeItemStatusSchema = z.enum(["draft", "archived"]);
+const editableWardrobeItemStatusSchema = z.enum(["draft", "active", "archived"]);
 
 const nullableOptionalText = (maxLength: number) =>
   z.string().trim().min(1).max(maxLength).nullable().optional();

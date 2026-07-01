@@ -1,4 +1,8 @@
-import { WardrobeItemMediaPurpose, WardrobeItemMediaStatus } from "@prisma/client";
+import {
+  WardrobeItemMediaPurpose,
+  WardrobeItemMediaStatus,
+  WardrobeItemStatus
+} from "@prisma/client";
 import type { Prisma, PrismaClient } from "@prisma/client";
 
 export const wardrobeMediaSelect = {
@@ -49,6 +53,24 @@ export async function findCurrentPrimaryMedia(
       id: true
     }
   });
+}
+
+export async function hasReadyWardrobeMedia(
+  prisma: PrismaClient,
+  wardrobeItemId: string
+): Promise<boolean> {
+  const media = await prisma.wardrobeItemMedia.findFirst({
+    where: {
+      wardrobeItemId,
+      status: WardrobeItemMediaStatus.READY,
+      deletedAt: null
+    },
+    select: {
+      id: true
+    }
+  });
+
+  return media !== null;
 }
 
 export async function createReadyWardrobeMedia(
@@ -106,16 +128,39 @@ export async function markWardrobeMediaDeletionPending(
   });
 }
 
-export async function completeWardrobeMediaDeletion(
+export async function completeWardrobeMediaDeletionAndDraftItem(
   prisma: PrismaClient,
-  mediaId: string
+  mediaId: string,
+  wardrobeItemId: string
 ): Promise<void> {
-  await prisma.wardrobeItemMedia.update({
-    where: {
-      id: mediaId
-    },
-    data: {
-      deletedAt: new Date()
+  await prisma.$transaction(async (tx) => {
+    await tx.wardrobeItemMedia.update({
+      where: {
+        id: mediaId
+      },
+      data: {
+        deletedAt: new Date()
+      }
+    });
+
+    const remainingReadyMedia = await tx.wardrobeItemMedia.count({
+      where: {
+        wardrobeItemId,
+        status: WardrobeItemMediaStatus.READY,
+        deletedAt: null
+      }
+    });
+
+    if (remainingReadyMedia === 0) {
+      await tx.wardrobeItem.updateMany({
+        where: {
+          id: wardrobeItemId,
+          status: WardrobeItemStatus.ACTIVE
+        },
+        data: {
+          status: WardrobeItemStatus.DRAFT
+        }
+      });
     }
   });
 }

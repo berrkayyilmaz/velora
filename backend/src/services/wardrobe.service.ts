@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient, WardrobeItemStatus } from "@prisma/client";
 
 import { createAnalyticsEvent } from "../repositories/analytics.repository.js";
+import { hasReadyWardrobeMedia } from "../repositories/wardrobe-media.repository.js";
 import {
   createUserWardrobeItem,
   deleteUserWardrobeItem,
@@ -165,6 +166,14 @@ export async function updateWardrobeItem(
 ): Promise<WardrobeItemResponse> {
   if (input.categoryId !== undefined) {
     await validateCategory(prisma, input.categoryId);
+  }
+
+  if (input.status === "active" && !(await hasReadyWardrobeMedia(prisma, wardrobeItemId))) {
+    throw new WardrobeServiceError(
+      "WARDROBE_MEDIA_REQUIRED",
+      409,
+      "An uploaded image is required before activating a wardrobe item."
+    );
   }
 
   const item = await updateUserWardrobeItem(prisma, userId, wardrobeItemId, input);

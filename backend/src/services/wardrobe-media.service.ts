@@ -1,7 +1,7 @@
 import type { PrismaClient, WardrobeItemMediaStatus } from "@prisma/client";
 
 import {
-  completeWardrobeMediaDeletion,
+  completeWardrobeMediaDeletionAndDraftItem,
   createReadyWardrobeMedia,
   findCurrentPrimaryMedia,
   findOwnedWardrobeItemForMedia,
@@ -117,7 +117,7 @@ export async function deleteWardrobeMedia(
 
   await markWardrobeMediaDeletionPending(prisma, media.id);
   await storage.delete(media.storageKey);
-  await completeWardrobeMediaDeletion(prisma, media.id);
+  await completeWardrobeMediaDeletionAndDraftItem(prisma, media.id, media.wardrobeItemId);
 
   return {
     data: {

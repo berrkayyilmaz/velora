@@ -95,6 +95,7 @@ export function EditWardrobeItemScreen() {
             notes: wardrobeItemQuery.data.notes ?? "",
             status:
               wardrobeItemQuery.data.status === "draft" ||
+              wardrobeItemQuery.data.status === "active" ||
               wardrobeItemQuery.data.status === "archived"
                 ? wardrobeItemQuery.data.status
                 : ""
