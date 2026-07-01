@@ -1,13 +1,17 @@
-import type { PrismaClient } from "@prisma/client";
+import { type PrismaClient, WardrobeItemStatus } from "@prisma/client";
 
 import { findFavoritedProductIds } from "../repositories/product.repository.js";
 import {
   createOutfitProduct,
+  createOutfitWardrobeItem,
   createUserOutfit,
   deleteOutfitProductByProduct,
+  deleteOutfitWardrobeItem,
   deleteUserOutfit,
   findActiveProductsForOutfit,
   findOutfitProductByProduct,
+  findOutfitWardrobeItem,
+  findUserWardrobeItemForOutfit,
   findUserOutfitById,
   isUniqueConstraintError,
   listUserOutfits,
@@ -40,6 +44,11 @@ export class OutfitServiceError extends Error {
 }
 
 export type OutfitProductMutationResult = {
+  response: OutfitDetailResponse;
+  created: boolean;
+};
+
+export type OutfitWardrobeItemMutationResult = {
   response: OutfitDetailResponse;
   created: boolean;
 };
@@ -317,6 +326,87 @@ export async function removeProductFromOutfit(
       "OUTFIT_PRODUCT_NOT_FOUND",
       404,
       "Product was not found in the outfit."
+    );
+  }
+
+  return getOutfitDetail(prisma, userId, outfitId);
+}
+
+async function getOwnedWardrobeItemOrThrow(
+  prisma: PrismaClient,
+  userId: string,
+  wardrobeItemId: string
+) {
+  const wardrobeItem = await findUserWardrobeItemForOutfit(prisma, userId, wardrobeItemId);
+
+  if (wardrobeItem === null) {
+    throw new OutfitServiceError("WARDROBE_ITEM_NOT_FOUND", 404, "Wardrobe item was not found.");
+  }
+
+  return wardrobeItem;
+}
+
+export async function addWardrobeItemToOutfit(
+  prisma: PrismaClient,
+  userId: string,
+  outfitId: string,
+  wardrobeItemId: string
+): Promise<OutfitWardrobeItemMutationResult> {
+  await getOwnedOutfitOrThrow(prisma, userId, outfitId);
+  const wardrobeItem = await getOwnedWardrobeItemOrThrow(prisma, userId, wardrobeItemId);
+
+  if (wardrobeItem.status !== WardrobeItemStatus.ACTIVE || wardrobeItem.media.length === 0) {
+    throw new OutfitServiceError(
+      "WARDROBE_ITEM_NOT_ELIGIBLE",
+      409,
+      "Only active wardrobe items with primary media can be added to outfits."
+    );
+  }
+
+  const existingItem = await findOutfitWardrobeItem(prisma, outfitId, wardrobeItemId);
+
+  if (existingItem !== null) {
+    return {
+      response: await getOutfitDetail(prisma, userId, outfitId),
+      created: false
+    };
+  }
+
+  try {
+    await createOutfitWardrobeItem(prisma, outfitId, wardrobeItemId);
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    return {
+      response: await getOutfitDetail(prisma, userId, outfitId),
+      created: false
+    };
+  }
+
+  return {
+    response: await getOutfitDetail(prisma, userId, outfitId),
+    created: true
+  };
+}
+
+export async function removeWardrobeItemFromOutfit(
+  prisma: PrismaClient,
+  userId: string,
+  outfitId: string,
+  wardrobeItemId: string
+): Promise<OutfitDetailResponse> {
+  await getOwnedOutfitOrThrow(prisma, userId, outfitId);
+  await getOwnedWardrobeItemOrThrow(prisma, userId, wardrobeItemId);
+
+  const deletedCount = await deleteOutfitWardrobeItem(prisma, outfitId, wardrobeItemId);
+
+  if (deletedCount === 0) {
+    throw new OutfitServiceError(
+      "OUTFIT_WARDROBE_ITEM_NOT_FOUND",
+      404,
+      "Wardrobe item was not found in the outfit."
     );
   }
 

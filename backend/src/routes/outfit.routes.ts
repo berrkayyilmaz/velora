@@ -4,6 +4,7 @@ import type { ZodError } from "zod";
 import { requireUserAuth } from "../middleware/auth.middleware.js";
 import {
   addOutfitProductRequestSchema,
+  addOutfitWardrobeItemRequestSchema,
   createOutfitRequestSchema,
   deleteOutfitResponseSchema,
   outfitDetailResponseSchema,
@@ -11,16 +12,19 @@ import {
   outfitListResponseSchema,
   outfitParamsSchema,
   outfitProductParamsSchema,
+  outfitWardrobeItemParamsSchema,
   updateOutfitRequestSchema
 } from "../schemas/outfit.schemas.js";
 import {
   addProductToOutfit,
+  addWardrobeItemToOutfit,
   createOutfit,
   deleteOutfit,
   getOutfitDetail,
   listOutfits,
   OutfitServiceError,
   removeProductFromOutfit,
+  removeWardrobeItemFromOutfit,
   updateOutfit
 } from "../services/outfit.service.js";
 
@@ -212,6 +216,60 @@ const outfitRoutes: FastifyPluginCallback = (app, _options, done) => {
           getAuthenticatedUserId(request),
           parsedParams.data.id,
           parsedParams.data.productId
+        );
+        const response = outfitDetailResponseSchema.parse({ data: outfit });
+
+        return reply.status(200).send(response);
+      } catch (error) {
+        return sendOutfitError(reply, error);
+      }
+    }
+  );
+
+  app.post("/:id/wardrobe-items", { preHandler: requireUserAuth }, async (request, reply) => {
+    const parsedParams = outfitParamsSchema.safeParse(request.params);
+
+    if (!parsedParams.success) {
+      return sendValidationError(reply, parsedParams.error);
+    }
+
+    const parsedBody = addOutfitWardrobeItemRequestSchema.safeParse(request.body);
+
+    if (!parsedBody.success) {
+      return sendValidationError(reply, parsedBody.error);
+    }
+
+    try {
+      const result = await addWardrobeItemToOutfit(
+        app.prisma,
+        getAuthenticatedUserId(request),
+        parsedParams.data.id,
+        parsedBody.data.wardrobeItemId
+      );
+      const response = outfitDetailResponseSchema.parse({ data: result.response });
+
+      return reply.status(result.created ? 201 : 200).send(response);
+    } catch (error) {
+      return sendOutfitError(reply, error);
+    }
+  });
+
+  app.delete(
+    "/:id/wardrobe-items/:wardrobeItemId",
+    { preHandler: requireUserAuth },
+    async (request, reply) => {
+      const parsedParams = outfitWardrobeItemParamsSchema.safeParse(request.params);
+
+      if (!parsedParams.success) {
+        return sendValidationError(reply, parsedParams.error);
+      }
+
+      try {
+        const outfit = await removeWardrobeItemFromOutfit(
+          app.prisma,
+          getAuthenticatedUserId(request),
+          parsedParams.data.id,
+          parsedParams.data.wardrobeItemId
         );
         const response = outfitDetailResponseSchema.parse({ data: outfit });
 

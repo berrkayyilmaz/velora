@@ -60,6 +60,11 @@ export const outfitProductParamsSchema = z.object({
   productId: uuidSchema
 });
 
+export const outfitWardrobeItemParamsSchema = z.object({
+  id: uuidSchema,
+  wardrobeItemId: uuidSchema
+});
+
 const productIdsSchema = z
   .array(uuidSchema)
   .default([])
@@ -86,6 +91,12 @@ export const addOutfitProductRequestSchema = z
   })
   .strict();
 
+export const addOutfitWardrobeItemRequestSchema = z
+  .object({
+    wardrobeItemId: uuidSchema
+  })
+  .strict();
+
 export const outfitListResponseSchema = z.object({
   data: z.object({
     items: z.array(outfitSummarySchema)
@@ -108,9 +119,11 @@ export const deleteOutfitResponseSchema = z.object({
 export type OutfitListQuery = z.infer<typeof outfitListQuerySchema>;
 export type OutfitParams = z.infer<typeof outfitParamsSchema>;
 export type OutfitProductParams = z.infer<typeof outfitProductParamsSchema>;
+export type OutfitWardrobeItemParams = z.infer<typeof outfitWardrobeItemParamsSchema>;
 export type CreateOutfitRequest = z.infer<typeof createOutfitRequestSchema>;
 export type UpdateOutfitRequest = z.infer<typeof updateOutfitRequestSchema>;
 export type AddOutfitProductRequest = z.infer<typeof addOutfitProductRequestSchema>;
+export type AddOutfitWardrobeItemRequest = z.infer<typeof addOutfitWardrobeItemRequestSchema>;
 export type ProductSummaryResponse = z.infer<typeof productSummarySchema>;
 export type CatalogRecordResponse = z.infer<typeof catalogRecordSchema>;
 export type OutfitSummaryResponse = z.infer<typeof outfitSummarySchema>;

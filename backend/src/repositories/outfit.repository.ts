@@ -1,4 +1,9 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import {
+  Prisma,
+  type PrismaClient,
+  WardrobeItemMediaPurpose,
+  WardrobeItemMediaStatus
+} from "@prisma/client";
 
 import type {
   CreateOutfitRequest,
@@ -90,6 +95,35 @@ export type OutfitSummaryRecord = Prisma.OutfitGetPayload<{
 
 export type OutfitDetailRecord = Prisma.OutfitGetPayload<{
   select: typeof outfitDetailSelect;
+}>;
+
+const outfitWardrobeItemSelect = {
+  id: true,
+  createdAt: true
+} satisfies Prisma.OutfitWardrobeItemSelect;
+
+export type OutfitWardrobeItemRecord = Prisma.OutfitWardrobeItemGetPayload<{
+  select: typeof outfitWardrobeItemSelect;
+}>;
+
+const wardrobeItemEligibilitySelect = {
+  id: true,
+  status: true,
+  media: {
+    where: {
+      purpose: WardrobeItemMediaPurpose.PRIMARY,
+      status: WardrobeItemMediaStatus.READY,
+      deletedAt: null
+    },
+    select: {
+      id: true
+    },
+    take: 1
+  }
+} satisfies Prisma.WardrobeItemSelect;
+
+export type WardrobeItemEligibilityRecord = Prisma.WardrobeItemGetPayload<{
+  select: typeof wardrobeItemEligibilitySelect;
 }>;
 
 type OutfitListResult = {
@@ -284,6 +318,87 @@ export async function deleteOutfitProductByProduct(
       where: {
         outfitId,
         productId
+      }
+    });
+
+    if (result.count > 0) {
+      await tx.outfit.update({
+        where: {
+          id: outfitId
+        },
+        data: {
+          updatedAt: new Date()
+        }
+      });
+    }
+
+    return result.count;
+  });
+}
+
+export async function findUserWardrobeItemForOutfit(
+  prisma: PrismaClient,
+  userId: string,
+  wardrobeItemId: string
+): Promise<WardrobeItemEligibilityRecord | null> {
+  return prisma.wardrobeItem.findFirst({
+    where: {
+      id: wardrobeItemId,
+      userId
+    },
+    select: wardrobeItemEligibilitySelect
+  });
+}
+
+export async function findOutfitWardrobeItem(
+  prisma: PrismaClient,
+  outfitId: string,
+  wardrobeItemId: string
+): Promise<OutfitWardrobeItemRecord | null> {
+  return prisma.outfitWardrobeItem.findUnique({
+    where: {
+      outfitId_wardrobeItemId: {
+        outfitId,
+        wardrobeItemId
+      }
+    },
+    select: outfitWardrobeItemSelect
+  });
+}
+
+export async function createOutfitWardrobeItem(
+  prisma: PrismaClient,
+  outfitId: string,
+  wardrobeItemId: string
+): Promise<void> {
+  await prisma.$transaction([
+    prisma.outfitWardrobeItem.create({
+      data: {
+        outfitId,
+        wardrobeItemId
+      }
+    }),
+    prisma.outfit.update({
+      where: {
+        id: outfitId
+      },
+      data: {
+        updatedAt: new Date()
+      }
+    })
+  ]);
+}
+
+export async function deleteOutfitWardrobeItem(
+  prisma: PrismaClient,
+  outfitId: string,
+  wardrobeItemId: string
+): Promise<number> {
+  return prisma.$transaction(async (tx) => {
+    const result = await tx.outfitWardrobeItem.deleteMany({
+      where: {
+        outfitId,
+        wardrobeItemId
       }
     });
 
