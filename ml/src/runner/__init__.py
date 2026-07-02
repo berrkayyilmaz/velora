@@ -6,6 +6,11 @@ from src.runner.config import (
     RunnerConfigError,
     load_runner_config,
 )
+from src.runner.devices import (
+    DeviceInfo,
+    DeviceInfoPayload,
+    detect_devices,
+)
 from src.runner.process import (
     ProcessRequest,
     ProcessResult,
@@ -14,12 +19,15 @@ from src.runner.process import (
 )
 
 __all__ = [
+    "DeviceInfo",
+    "DeviceInfoPayload",
     "ImageSize",
     "ProcessRequest",
     "ProcessResult",
     "ProcessResultPayload",
     "RunnerConfig",
     "RunnerConfigError",
+    "detect_devices",
     "load_runner_config",
     "run_process",
 ]

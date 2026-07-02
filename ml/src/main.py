@@ -19,7 +19,7 @@ from src.benchmark import (
 )
 from src.datasets import DatasetManifestError, load_dataset_manifest
 from src.providers import ProviderRequest, create_provider_registry
-from src.runner import RunnerConfigError, load_runner_config
+from src.runner import RunnerConfigError, detect_devices, load_runner_config
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -107,6 +107,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     report_parser.add_argument("--summary", type=Path, required=True)
     report_parser.add_argument("--output", type=Path, required=True)
+
+    subparsers.add_parser(
+        "devices",
+        help="Detect local Python, platform, and optional CUDA capabilities.",
+    )
 
     return parser
 
@@ -204,6 +209,12 @@ def generate_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def show_devices() -> int:
+    """Print local device information."""
+    print(json.dumps(detect_devices().to_payload(), indent=2, sort_keys=True))
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse CLI arguments and execute the selected environment-only command."""
     parser = build_parser()
@@ -238,6 +249,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return generate_report(args)
         except BenchmarkReportError as error:
             parser.error(str(error))
+
+    if args.command == "devices":
+        return show_devices()
 
     for key, value in environment_info().items():
         print(f"{key}: {value}")
