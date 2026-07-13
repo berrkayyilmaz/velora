@@ -559,54 +559,222 @@ nullable `primaryMedia`, and relationship `addedAt`. Existing outfit creation ac
 
 ### 17.5 Phase 3 Planned Data Shapes
 
-#### TryOnProfile
+The following shapes are future, non-contract planning artifacts. They do not add current
+backend endpoints and should not be treated as implemented API behavior.
+
+#### UserAvatar
 
 | Field | Purpose |
 | --- | --- |
-| `id` | Try-on profile ID. |
-| `status` | Active, disabled, or deletion pending. |
-| `currentConsent` | Current consent version and purpose summary; no policy text duplication. |
+| `id` | User avatar/person image ID. |
+| `status` | `ready`, `failed`, or `deletion_pending`. |
+| `mediaType` | Approved image MIME type. |
+| `width` | Optional validated width. |
+| `height` | Optional validated height. |
 | `createdAt` | Creation timestamp. |
 | `updatedAt` | Last update timestamp. |
+
+`UserAvatar` is optional for Phase 3. The first try-on flow may instead use a temporary
+person image upload if saved avatar UX is not approved.
+
+#### TryOnConsent
+
+| Field | Purpose |
+| --- | --- |
+| `id` | Consent record ID. |
+| `policyVersion` | Accepted policy/disclosure version. |
+| `purpose` | Processing purpose, such as virtual try-on generation. |
+| `grantedAt` | Consent grant timestamp. |
+| `withdrawnAt` | Optional withdrawal timestamp. |
+
+Consent history should be append-only. Job creation requires active consent.
 
 #### TryOnJob
 
 | Field | Purpose |
 | --- | --- |
 | `id` | Try-on job ID. |
-| `status` | Queued, processing, succeeded, failed, canceled, or deletion pending. |
-| `items` | Discriminated catalog or wardrobe item summaries. |
-| `result` | Private result summary with a short-lived URL when ready. |
+| `status` | `queued`, `validating`, `processing`, `succeeded`, `failed`, `cancelled`, or `expired`. |
+| `avatar` | Optional `UserAvatar` summary when a saved avatar is used. |
+| `personImage` | Temporary person-image summary when no saved avatar is used. |
+| `garmentSource` | Catalog product or wardrobe item summary. |
+| `outfitId` | Optional outfit context. |
+| `provider` | Provider identifier when assigned. |
+| `providerVersion` | Provider implementation version when assigned. |
+| `modelVersion` | Model/checkpoint version when assigned. |
+| `attemptCount` | Worker attempt count. |
 | `failureCode` | Stable user-safe failure reason when applicable. |
+| `failureMessage` | User-safe failure message when applicable. |
+| `result` | `TryOnResult` summary when ready. |
 | `createdAt` | Job creation timestamp. |
+| `updatedAt` | Last update timestamp. |
 | `completedAt` | Optional terminal timestamp. |
-| `expiresAt` | Optional result retention deadline. |
+| `expiresAt` | Optional retention deadline. |
+
+#### TryOnResult
+
+| Field | Purpose |
+| --- | --- |
+| `id` | Result ID. |
+| `jobId` | Generating job ID. |
+| `status` | `ready`, `failed`, `deletion_pending`, or `deleted`. |
+| `mediaType` | Generated image MIME type. |
+| `width` | Optional output width. |
+| `height` | Optional output height. |
+| `url` | Short-lived private read URL when available. |
+| `expiresAt` | Optional retention deadline. |
+| `createdAt` | Result creation timestamp. |
+| `deletedAt` | Optional deletion timestamp. |
 
 API responses must not expose provider job IDs, internal storage keys, raw model prompts,
-processor credentials, or detailed provider errors.
+processor credentials, private source image URLs, or detailed provider errors.
 
-### 17.6 Phase 3 Candidate Profile And Consent Endpoints
+### 17.6 Phase 3 Candidate Avatar And Consent Endpoints
 
-| Method | Candidate Path | Purpose | Main Planning Rules |
-| --- | --- | --- | --- |
-| GET | `/api/v1/me/try-on-profile` | Get optional try-on profile. | Return only authenticated user's profile. |
-| POST | `/api/v1/me/try-on-profile` | Create try-on profile after consent flow starts. | Must not silently create or populate sensitive fields during normal registration. |
-| PATCH | `/api/v1/me/try-on-profile` | Update approved profile fields. | Permit only fields required by the selected model and approved policy. |
-| DELETE | `/api/v1/me/try-on-profile` | Withdraw and delete try-on profile. | Start idempotent deletion across jobs, assets, storage, and processors. |
-| POST | `/api/v1/me/try-on-profile/consents` | Record explicit current consent. | Require supported policy version and purpose. |
-| DELETE | `/api/v1/me/try-on-profile/consents/current` | Withdraw current consent. | Block new jobs immediately and start applicable deletion workflow. |
-
-### 17.7 Phase 3 Candidate Try-On Endpoints
+All endpoints in this section are future/non-contract proposals. They are not part of the
+current `/api/v1` implementation.
 
 | Method | Candidate Path | Purpose | Main Planning Rules |
 | --- | --- | --- | --- |
-| POST | `/api/v1/try-on/assets/upload-request` | Request private source-media upload. | Require current consent; validate type, size, purpose, and ownership. |
-| POST | `/api/v1/try-on/assets/:assetId/confirm` | Confirm source media readiness. | Validate object and run approved input-quality checks before allowing jobs. |
-| DELETE | `/api/v1/try-on/assets/:assetId` | Delete private source or result asset. | Asset must belong to user; deletion must propagate to storage and processors where applicable. |
-| POST | `/api/v1/try-on/jobs` | Create asynchronous try-on request. | Require current consent, ready source media, supported item types/categories, and owned outfit/wardrobe references. Use idempotency protection. |
-| GET | `/api/v1/try-on/jobs/:jobId` | Read job status and private result. | Job must belong to authenticated user. Return user-safe status only. |
-| GET | `/api/v1/try-on/jobs` | List user's recent jobs. | Conservative pagination and retention-aware results. |
-| DELETE | `/api/v1/try-on/jobs/:jobId` | Cancel when possible or delete job and result. | Enforce valid status transitions and idempotent cleanup. |
+| GET | `/api/v1/try-on/avatars` | List saved user avatars/person images. | Return only authenticated user's avatar records. |
+| POST | `/api/v1/try-on/avatars` | Create or confirm saved avatar metadata after upload. | Require active consent; validate image type, size, ownership, and storage object readiness. |
+| DELETE | `/api/v1/try-on/avatars/:avatarId` | Delete a saved avatar. | Avatar must belong to user; block new jobs using it and start storage cleanup. |
+| POST | `/api/v1/try-on/consents` | Record explicit current consent. | Require supported policy version and purpose. |
+| DELETE | `/api/v1/try-on/consents/current` | Withdraw current consent. | Block new jobs immediately and start applicable deletion workflow. |
+
+### 17.7 Phase 3 Future Try-On Job Endpoints
+
+All endpoints in this section are future/non-contract proposals. They are not part of the
+current `/api/v1` implementation.
+
+| Method | Candidate Path | Purpose | Auth | Request | Response | Main Planning Rules |
+| --- | --- | --- | --- | --- | --- | --- |
+| POST | `/api/v1/try-on/jobs` | Create asynchronous try-on request. | User auth | Body described in 17.7.1. Optional `Idempotency-Key` header. | `202`; `data` is `TryOnJob`. | Require active consent, valid person source, valid garment source, supported category, ownership checks, quota checks, and idempotency protection. |
+| GET | `/api/v1/try-on/jobs/:jobId` | Read job status and private result. | User auth | Path: `jobId`. | `data` is `TryOnJob`. | Job must belong to authenticated user. Return user-safe status only. Include short-lived result URL only when ready. |
+| GET | `/api/v1/try-on/jobs` | List user's recent try-on jobs. | User auth | Query: optional `status`, `page`, `pageSize`. | `data.items` list of `TryOnJob`; `meta.pagination`. | Return only authenticated user's jobs. Exclude expired/deleted results unless explicitly needed. |
+| POST | `/api/v1/try-on/jobs/:jobId/cancel` | Request cancellation. | User auth | Path: `jobId`. | `data` is `TryOnJob`. | Job must belong to user. Queued jobs cancel immediately; processing jobs become cancellation requested or cancelled when worker acknowledges. |
+| DELETE | `/api/v1/try-on/jobs/:jobId` | Delete job result and mark job deleted/expired. | User auth | Path: `jobId`. | `data.success`; optional `data.deletionPending`. | Job must belong to user. Delete result storage where present. Safe to retry. Does not expose storage details. |
+
+#### 17.7.1 POST `/api/v1/try-on/jobs` Request Inputs
+
+The request must include one person source and one garment source.
+
+Person source options:
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `avatarId` | Conditional | Saved user avatar/person image. |
+| `personImageAssetId` | Conditional | Temporary uploaded person image asset, if saved avatars are not used. |
+
+Exactly one of `avatarId` or `personImageAssetId` should be present.
+
+Garment source options:
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `productId` | Conditional | Catalog product used as garment source. |
+| `wardrobeItemId` | Conditional | User-owned wardrobe item used as garment source. |
+
+Exactly one of `productId` or `wardrobeItemId` should be present.
+
+Optional context:
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `outfitId` | No | Source outfit context if try-on was launched from an outfit. |
+| `clothType` | No | Explicit `upper`, `lower`, or `overall` override when approved. |
+| `seed` | No | Optional deterministic seed. |
+| `idempotencyKey` | No | Body-level fallback if `Idempotency-Key` header is not used. |
+
+#### 17.7.2 Try-On Job Lifecycle
+
+Allowed future statuses:
+
+- `queued`
+- `validating`
+- `processing`
+- `succeeded`
+- `failed`
+- `cancelled`
+- `expired`
+
+Lifecycle rules:
+
+- New accepted jobs start as `queued`.
+- Jobs may move to `validating` when a worker verifies source assets.
+- Jobs move to `processing` only after validation succeeds.
+- Jobs move to `succeeded` only after a `TryOnResult` is stored.
+- Jobs move to `failed` for terminal or exhausted retry failures.
+- Jobs move to `cancelled` after user cancellation is accepted and no result should be
+  shown.
+- Jobs move to `expired` when retention cleanup removes result availability.
+
+#### 17.7.3 Ownership Rules
+
+- The job must belong to the authenticated user.
+- `avatarId` must belong to the authenticated user.
+- `personImageAssetId` must belong to the authenticated user.
+- `wardrobeItemId` must belong to the authenticated user.
+- `outfitId`, if provided, must belong to the authenticated user.
+- If both `outfitId` and `wardrobeItemId` are provided, the wardrobe item should either be
+  part of the outfit or be explicitly accepted as a one-off garment source.
+- Catalog `productId` must reference an active product with usable garment imagery.
+
+#### 17.7.4 Consent Rules
+
+- Active try-on consent is required before job creation.
+- Consent must be rechecked before dispatching source images to the worker.
+- Consent withdrawal blocks new jobs immediately.
+- Consent withdrawal should cancel queued jobs and start deletion for retained source/result
+  assets where required by policy.
+
+#### 17.7.5 Retention And Deletion Rules
+
+- Source person images should have the shortest practical retention.
+- Generated results should have an explicit `expiresAt`.
+- Debug artifacts should be disabled by default in production.
+- `DELETE /api/v1/try-on/jobs/:jobId` should delete generated result storage when present
+  and mark deletion state if cleanup is asynchronous.
+- Deletion should be idempotent and safe to retry.
+- API responses should never expose durable storage keys.
+
+#### 17.7.6 Retry Rules
+
+- Retry only transient failures such as worker crash, lease timeout, temporary storage
+  failure, temporary provider failure, or GPU out-of-memory when a lower-cost retry policy
+  allows it.
+- Do not retry invalid image input, missing consent, ownership failures, unsupported
+  categories, policy violations, or license gate failures.
+- Track `attemptCount`, `maxAttempts`, last failure code, and terminal failure reason.
+
+#### 17.7.7 Error Rules
+
+Candidate user-safe error codes:
+
+- `try_on_consent_required`
+- `try_on_avatar_not_found`
+- `try_on_person_image_invalid`
+- `try_on_garment_not_found`
+- `try_on_unsupported_category`
+- `try_on_quota_exceeded`
+- `try_on_cancelled`
+- `try_on_provider_unavailable`
+- `try_on_generation_failed`
+- `try_on_storage_failed`
+- `try_on_expired`
+
+Detailed provider errors, stack traces, storage keys, signed URLs, and raw media paths must
+remain internal.
+
+#### 17.7.8 Idempotency Rules
+
+- `POST /api/v1/try-on/jobs` should support an `Idempotency-Key` header or equivalent
+  body field.
+- Idempotency keys should be scoped to authenticated user and request intent.
+- A repeated request with the same key should return the existing job when the request body
+  is equivalent.
+- A repeated key with a materially different body should return a conflict error.
+- Idempotency prevents duplicate GPU cost from retries or mobile double taps.
 
 ### 17.8 Post-MVP Validation And Privacy Rules
 

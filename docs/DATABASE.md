@@ -85,8 +85,7 @@ Analytics and redirect models:
 Post-MVP planned models:
 
 - Phase 2: `WardrobeItem`, `WardrobeItemMedia`, `OutfitWardrobeItem`
-- Phase 3: `TryOnProfile`, `TryOnConsent`, `TryOnAsset`, `TryOnJob`,
-  `TryOnJobItem`
+- Phase 3: `UserAvatar`, `TryOnConsent`, `TryOnJob`, `TryOnResult`
 
 ## 5. User Model
 
@@ -814,7 +813,7 @@ Represents one product owned by a user in their private Digital Wardrobe.
 - Many `WardrobeItem` records belong to one `Category`.
 - One `WardrobeItem` has many `WardrobeItemMedia` records.
 - One `WardrobeItem` has many `OutfitWardrobeItem` records.
-- A wardrobe item may be referenced by future `TryOnJobItem` records.
+- A wardrobe item may be referenced by future `TryOnJob` records as a garment source.
 
 #### Planned Indexes
 
@@ -909,12 +908,12 @@ Joins a saved outfit to a user-owned wardrobe item while preserving the existing
 - Cross-source manual ordering is not assumed. If required later, ordering must be designed
   consistently across both join models.
 
-### 23.5 Phase 3 Model: TryOnProfile
+### 23.5 Phase 3 Model: UserAvatar
 
 #### Purpose
 
-Represents an optional, separately protected profile for a user who enters the Virtual
-Try-On experience.
+Represents a user-owned person/avatar image that may be used as the source person image
+for a future Virtual Try-On request.
 
 #### Planned Fields
 
@@ -922,28 +921,33 @@ Try-On experience.
 | --- | --- | --- |
 | `id` | Yes | Primary identifier. |
 | `userId` | Yes | Owning user. |
-| `status` | Yes | Active, disabled, or deletion-pending lifecycle state. |
+| `storageKey` | Yes | Private object-storage key for the source image. |
+| `mediaType` | Yes | Approved image MIME type. |
+| `width` | No | Validated image width when available. |
+| `height` | No | Validated image height when available. |
+| `fileSize` | No | Validated file size. |
+| `status` | Yes | Ready, failed, or deletion-pending lifecycle state. |
 | `createdAt` | Yes | Creation timestamp. |
 | `updatedAt` | Yes | Last update timestamp. |
 | `deletedAt` | No | Deletion request or completion timestamp. |
 
 #### Relationships
 
-- One `TryOnProfile` belongs to one `User`.
-- One `User` has at most one active `TryOnProfile`.
-- One `TryOnProfile` has many `TryOnConsent`, `TryOnAsset`, and `TryOnJob` records.
+- Many `UserAvatar` records belong to one `User`.
+- One `UserAvatar` may be referenced by many future `TryOnJob` records.
 
 #### Planned Indexes
 
-- Unique index on `userId`.
-- Index on `status`.
+- Index on `userId` and `status`.
+- Unique index on `storageKey`.
 - Index on `deletedAt` for deletion processing.
 
 #### Phase 3 Notes
 
-- The profile itself should not become a generic container for arbitrary sensitive JSON.
-- Measurements or derived attributes should be added only when required by an approved model
-  and should have field-level purpose, validation, retention, and access rules.
+- This model is optional if the first production try-on flow uses a temporary upload-only
+  source image instead of saved avatars.
+- Storage keys must never be exposed directly to clients.
+- Source avatar deletion must block new jobs and trigger object-storage cleanup.
 
 ### 23.6 Phase 3 Model: TryOnConsent
 
@@ -956,126 +960,142 @@ Records versioned, purpose-specific user consent for try-on data processing.
 | Field | Required | Purpose |
 | --- | --- | --- |
 | `id` | Yes | Primary identifier. |
-| `tryOnProfileId` | Yes | Related try-on profile. |
+| `userId` | Yes | User granting consent. |
 | `policyVersion` | Yes | Version of the accepted disclosure and policy. |
-| `purpose` | Yes | Approved processing purpose. |
+| `purpose` | Yes | Approved processing purpose, such as virtual try-on generation. |
 | `grantedAt` | Yes | Consent timestamp. |
 | `withdrawnAt` | No | Consent withdrawal timestamp. |
+| `createdAt` | Yes | Creation timestamp. |
 
 #### Relationships
 
-- Many `TryOnConsent` records belong to one `TryOnProfile`.
+- Many `TryOnConsent` records belong to one `User`.
+- One `TryOnJob` should record which consent record authorized processing.
 
 #### Planned Indexes
 
-- Index on `tryOnProfileId` and `grantedAt`.
-- Composite index on `tryOnProfileId`, `purpose`, and `withdrawnAt`.
+- Index on `userId` and `grantedAt`.
+- Composite index on `userId`, `purpose`, and `withdrawnAt`.
 
 #### Phase 3 Notes
 
 - Consent history should be append-oriented rather than overwritten.
-- A job must verify current consent before dispatching data to an AI processor.
+- A job must verify current consent at creation and again before dispatching data to an AI
+  processor.
+- Consent withdrawal must block new jobs immediately and trigger any required deletion
+  workflow for retained source/result media.
 
-### 23.7 Phase 3 Model: TryOnAsset
+### 23.7 Phase 3 Model: TryOnJob
 
 #### Purpose
 
-Stores metadata for private source media and generated try-on results.
+Represents one asynchronous AI try-on processing request.
 
 #### Planned Fields
 
 | Field | Required | Purpose |
 | --- | --- | --- |
 | `id` | Yes | Primary identifier. |
-| `tryOnProfileId` | Yes | Owning try-on profile. |
-| `jobId` | No | Generating job for result assets. |
-| `assetType` | Yes | User input, normalized input, or generated result. |
-| `storageKey` | Yes | Private object-storage key. |
-| `mediaType` | Yes | Approved MIME type. |
-| `status` | Yes | Uploading, ready, failed, or deletion-pending. |
-| `expiresAt` | No | Retention deadline when the asset is temporary. |
+| `userId` | Yes | Owning user for direct authorization. |
+| `consentId` | Yes | Consent record used to authorize processing. |
+| `avatarId` | No | Optional saved `UserAvatar` source person image. |
+| `personImageStorageKey` | No | Temporary source person image key when no saved avatar is used. |
+| `productId` | No | Catalog product garment input when catalog source is used. |
+| `wardrobeItemId` | No | User-owned wardrobe item garment input when wardrobe source is used. |
+| `outfitId` | No | Optional outfit context. |
+| `status` | Yes | `queued`, `validating`, `processing`, `succeeded`, `failed`, `cancelled`, or `expired`. |
+| `provider` | No | Approved processor identifier. |
+| `providerVersion` | No | Provider implementation version. |
+| `modelVersion` | No | Model/checkpoint version used for generation. |
+| `idempotencyKey` | No | User-scoped client key used to prevent duplicate jobs. |
+| `attemptCount` | Yes | Number of worker attempts. |
+| `maxAttempts` | Yes | Retry limit. |
+| `failureCode` | No | Stable user-safe failure category. |
+| `failureMessage` | No | User-safe failure description. |
+| `processingStartedAt` | No | Processing start timestamp. |
+| `completedAt` | No | Terminal timestamp. |
+| `cancelledAt` | No | Cancellation timestamp. |
+| `expiresAt` | No | Job/result retention deadline. |
+| `createdAt` | Yes | Creation timestamp. |
+| `updatedAt` | Yes | Last update timestamp. |
+
+#### Relationships
+
+- Many `TryOnJob` records belong to one `User`.
+- Many `TryOnJob` records reference one `TryOnConsent`.
+- Many `TryOnJob` records may reference one `UserAvatar`.
+- A `TryOnJob` may reference one owned `Outfit`.
+- A `TryOnJob` references either one catalog `Product` or one owned `WardrobeItem` as the
+  garment source.
+- One successful `TryOnJob` has one `TryOnResult`.
+
+#### Planned Indexes
+
+- Index on `userId`, `status`, and `createdAt`.
+- Index on `userId` and `createdAt`.
+- Index on `consentId`.
+- Index on `avatarId`.
+- Index on `productId`.
+- Index on `wardrobeItemId`.
+- Index on `outfitId`.
+- Index on `expiresAt`.
+- Unique composite index on `userId` and `idempotencyKey` where `idempotencyKey` is not
+  null.
+
+#### Phase 3 Notes
+
+- Exactly one garment source should be present: `productId` or `wardrobeItemId`.
+- Exactly one person source should be present: `avatarId` or `personImageStorageKey`.
+- Database-level integrity rules should complement Zod validation for conditional fields.
+- Jobs should snapshot the minimum display and processing metadata needed to explain a
+  result if source catalog or wardrobe records later change.
+- Failure details returned to users must not expose provider internals or sensitive media
+  references.
+- Worker retries should update `attemptCount` and preserve the original idempotency key.
+
+### 23.8 Phase 3 Model: TryOnResult
+
+#### Purpose
+
+Stores metadata for the generated try-on result image.
+
+#### Planned Fields
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `id` | Yes | Primary identifier. |
+| `jobId` | Yes | Generating try-on job. |
+| `userId` | Yes | Owning user for direct authorization. |
+| `storageKey` | Yes | Private object-storage key for generated result. |
+| `mediaType` | Yes | Approved generated image MIME type. |
+| `width` | No | Output image width. |
+| `height` | No | Output image height. |
+| `fileSize` | No | Generated file size. |
+| `provider` | Yes | Provider identifier used. |
+| `modelVersion` | No | Model/checkpoint version used. |
+| `status` | Yes | Ready, failed, deletion-pending, or deleted. |
+| `expiresAt` | No | Result retention deadline. |
 | `createdAt` | Yes | Creation timestamp. |
 | `deletedAt` | No | Deletion timestamp. |
 
 #### Relationships
 
-- Many `TryOnAsset` records belong to one `TryOnProfile`.
-- Result assets may belong to one `TryOnJob`.
+- One `TryOnResult` belongs to one `TryOnJob`.
+- One `TryOnResult` belongs to one `User`.
 
 #### Planned Indexes
 
+- Unique index on `jobId`.
 - Unique index on `storageKey`.
-- Index on `tryOnProfileId`, `assetType`, and `status`.
-- Index on `jobId`.
+- Index on `userId` and `createdAt`.
 - Index on `expiresAt` and `deletedAt` for retention cleanup.
 
 #### Phase 3 Notes
 
+- API responses should expose short-lived read URLs, not durable storage keys.
 - Storage keys, signed URLs, and raw media must not be copied into analytics metadata.
-- Source and result asset retention may differ.
-- Provider-side deletion state may require separate operational tracking.
-
-### 23.8 Phase 3 Models: TryOnJob And TryOnJobItem
-
-#### Purpose
-
-Represents asynchronous AI processing and the catalog or wardrobe items selected for one
-try-on request.
-
-#### Planned TryOnJob Fields
-
-| Field | Required | Purpose |
-| --- | --- | --- |
-| `id` | Yes | Primary identifier. |
-| `userId` | Yes | Owning user for direct authorization. |
-| `tryOnProfileId` | Yes | Related try-on profile. |
-| `outfitId` | No | Optional source outfit context. |
-| `status` | Yes | Queued, processing, succeeded, failed, canceled, or deletion-pending. |
-| `provider` | No | Approved processor identifier. |
-| `providerJobId` | No | External job reference, never exposed publicly. |
-| `failureCode` | No | Stable user-safe failure category. |
-| `createdAt` | Yes | Creation timestamp. |
-| `startedAt` | No | Processing start timestamp. |
-| `completedAt` | No | Terminal timestamp. |
-| `expiresAt` | No | Job/result retention deadline. |
-
-#### Planned TryOnJobItem Fields
-
-| Field | Required | Purpose |
-| --- | --- | --- |
-| `id` | Yes | Primary identifier. |
-| `jobId` | Yes | Try-on job relationship. |
-| `itemType` | Yes | Catalog product or wardrobe item discriminator. |
-| `productId` | Conditional | Catalog product when `itemType` is catalog. |
-| `wardrobeItemId` | Conditional | Wardrobe item when `itemType` is wardrobe. |
-| `position` | No | Processing or layering order if supported. |
-| `createdAt` | Yes | Creation timestamp. |
-
-#### Relationships
-
-- Many `TryOnJob` records belong to one `User` and one `TryOnProfile`.
-- A `TryOnJob` may reference one owned `Outfit`.
-- One `TryOnJob` has one or more `TryOnJobItem` records.
-- A `TryOnJobItem` references either a catalog `Product` or owned `WardrobeItem`.
-- One successful job may produce one or more result `TryOnAsset` records.
-
-#### Planned Indexes
-
-- Index on `userId`, `status`, and `createdAt`.
-- Index on `tryOnProfileId` and `createdAt`.
-- Unique index on `provider` and `providerJobId` when both exist.
-- Index on `expiresAt`.
-- Index on `TryOnJobItem.jobId`.
-- Index on `TryOnJobItem.productId` and `TryOnJobItem.wardrobeItemId`.
-
-#### Phase 3 Notes
-
-- Conditional item references require database-level integrity rules in addition to Zod
-  validation.
-- Jobs should snapshot the minimum display and processing metadata needed to explain a result
-  if source catalog or wardrobe records later change.
-- Failure details returned to users must not expose provider internals or sensitive media
-  references.
+- Result deletion should be idempotent and should not require deleting the historical job
+  record.
 
 ### 23.9 Post-MVP Ownership, Retention, And Deletion Rules
 
@@ -1084,8 +1104,8 @@ try-on request.
 - Every try-on profile, consent, asset, job, and wardrobe input must resolve to one owning
   user.
 - Wardrobe deletion must define behavior for outfit references before Phase 2 implementation.
-- Try-on profile deletion must cascade into an idempotent deletion workflow for jobs, source
-  assets, results, and processor-side copies.
+- Try-on avatar, consent withdrawal, account deletion, and result deletion must feed an
+  idempotent deletion workflow for jobs, source assets, results, and processor-side copies.
 - Database deletion must not be marked complete until required object-storage deletion has
   succeeded or entered a monitored retry state.
 - Account deletion must include Digital Wardrobe and Virtual Try-On data when those phases
