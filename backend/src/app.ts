@@ -17,6 +17,7 @@ import outfitRoutes from "./routes/outfit.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
 import redirectRoutes from "./routes/redirect.routes.js";
+import tryOnRoutes from "./routes/try-on.routes.js";
 import wardrobeRoutes from "./routes/wardrobe.routes.js";
 import wardrobeMediaRoutes from "./routes/wardrobe-media.routes.js";
 import wishlistRoutes from "./routes/wishlist.routes.js";
@@ -44,6 +45,7 @@ export function buildApp(): FastifyInstance {
   app.register(analyticsRoutes, { prefix: `${API_PREFIX}/analytics` });
   app.register(wardrobeRoutes, { prefix: `${API_PREFIX}/wardrobe` });
   app.register(wardrobeMediaRoutes, { prefix: `${API_PREFIX}/wardrobe` });
+  app.register(tryOnRoutes, { prefix: `${API_PREFIX}/try-on` });
   app.register(adminRoutes, { prefix: `${API_PREFIX}/admin` });
   app.register(adminCatalogRoutes, { prefix: `${API_PREFIX}/admin` });
   app.register(adminAnalyticsRoutes, { prefix: `${API_PREFIX}/admin/analytics` });
