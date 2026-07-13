@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
+
+ModelStatus = Literal["succeeded", "failed"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,3 +32,10 @@ class ModelResult:
     height: int
     seed: int
     warnings: tuple[str, ...] = ()
+    status: ModelStatus = "succeeded"
+    output_path: Path | None = None
+    duration_ms: float = 0.0
+    model_id: str = ""
+    model_version: str = ""
+    error: str | None = None
+    metadata: tuple[tuple[str, str], ...] = ()

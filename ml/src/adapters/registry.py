@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from src.adapters.base import ModelAdapter
+from src.adapters.catvton import CatVTONAdapter
 from src.adapters.dummy import DummyModelAdapter
 
 
@@ -33,5 +34,6 @@ class AdapterRegistry:
 def create_adapter_registry() -> AdapterRegistry:
     """Create the model adapter registry available to local providers."""
     registry = AdapterRegistry()
+    registry.register(CatVTONAdapter())
     registry.register(DummyModelAdapter())
     return registry
