@@ -194,6 +194,18 @@ export async function findUserTryOnJobById(
   });
 }
 
+export async function findTryOnJobById(
+  prisma: PrismaClient,
+  jobId: string
+): Promise<TryOnJobRecord | null> {
+  return prisma.tryOnJob.findUnique({
+    where: {
+      id: jobId
+    },
+    select: tryOnJobSelect
+  });
+}
+
 export async function findUserTryOnJobByIdempotencyKey(
   prisma: PrismaClient,
   userId: string,
@@ -289,6 +301,118 @@ export async function updateTryOnJobStatus(
   }
 
   return findUserTryOnJobById(prisma, userId, jobId);
+}
+
+export async function transitionTryOnJobStatus(
+  prisma: PrismaClient,
+  jobId: string,
+  statuses: PrismaTryOnJobStatus[],
+  data: Prisma.TryOnJobUpdateManyMutationInput
+): Promise<TryOnJobRecord | null> {
+  const result = await prisma.tryOnJob.updateMany({
+    where: {
+      id: jobId,
+      status: {
+        in: statuses
+      }
+    },
+    data
+  });
+
+  if (result.count === 0) {
+    return null;
+  }
+
+  return findTryOnJobById(prisma, jobId);
+}
+
+export async function touchTryOnJobHeartbeat(
+  prisma: PrismaClient,
+  jobId: string,
+  statuses: PrismaTryOnJobStatus[]
+): Promise<TryOnJobRecord | null> {
+  return transitionTryOnJobStatus(prisma, jobId, statuses, {
+    updatedAt: new Date()
+  });
+}
+
+export async function completeTryOnJobWithResult(
+  prisma: PrismaClient,
+  input: {
+    jobId: string;
+    statuses: PrismaTryOnJobStatus[];
+    storageKey: string;
+    mediaType: string;
+    provider: string;
+    providerVersion?: string;
+    modelVersion?: string;
+    width?: number;
+    height?: number;
+    fileSize?: number;
+    expiresAt?: Date;
+  }
+): Promise<TryOnJobRecord | null> {
+  return prisma.$transaction(async (tx) => {
+    const now = new Date();
+    const result = await tx.tryOnJob.updateMany({
+      where: {
+        id: input.jobId,
+        status: {
+          in: input.statuses
+        }
+      },
+      data: {
+        status: PrismaTryOnJobStatus.SUCCEEDED,
+        provider: input.provider,
+        ...(input.providerVersion === undefined ? {} : { providerVersion: input.providerVersion }),
+        ...(input.modelVersion === undefined ? {} : { modelVersion: input.modelVersion }),
+        failureCode: null,
+        failureMessage: null,
+        completedAt: now,
+        ...(input.expiresAt === undefined ? {} : { expiresAt: input.expiresAt })
+      }
+    });
+
+    if (result.count === 0) {
+      return null;
+    }
+
+    const job = await tx.tryOnJob.findUnique({
+      where: {
+        id: input.jobId
+      },
+      select: {
+        userId: true,
+        expiresAt: true
+      }
+    });
+
+    if (job === null) {
+      return null;
+    }
+
+    await tx.tryOnResult.create({
+      data: {
+        jobId: input.jobId,
+        userId: job.userId,
+        storageKey: input.storageKey,
+        mediaType: input.mediaType,
+        provider: input.provider,
+        ...(input.modelVersion === undefined ? {} : { modelVersion: input.modelVersion }),
+        ...(input.width === undefined ? {} : { width: input.width }),
+        ...(input.height === undefined ? {} : { height: input.height }),
+        ...(input.fileSize === undefined ? {} : { fileSize: input.fileSize }),
+        expiresAt: input.expiresAt ?? job.expiresAt
+      }
+    });
+
+    return tx.tryOnJob.findUnique({
+      where: {
+        id: input.jobId
+      },
+      select: tryOnJobSelect
+    });
+  });
 }
 
 export async function expireTryOnJob(

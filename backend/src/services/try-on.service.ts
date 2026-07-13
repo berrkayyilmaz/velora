@@ -1,6 +1,7 @@
 import type { PrismaClient, TryOnJobStatus as DatabaseTryOnJobStatus } from "@prisma/client";
 
 import {
+  completeTryOnJobWithResult,
   createTryOnJobRecord,
   expireTryOnJob,
   findActiveTryOnProduct,
@@ -9,10 +10,13 @@ import {
   findOutfitProductForTryOn,
   findOutfitWardrobeItemForTryOn,
   findOwnedOutfitForTryOn,
+  findTryOnJobById,
   findUserTryOnJobById,
   findUserTryOnJobByIdempotencyKey,
   listUserTryOnJobs,
   PrismaTryOnJobStatus,
+  touchTryOnJobHeartbeat,
+  transitionTryOnJobStatus,
   updateTryOnJobStatus,
   type TryOnJobRecord,
   type TryOnResultRecord
@@ -49,6 +53,23 @@ export class TryOnServiceError extends Error {
 export type CreateTryOnJobResult = {
   response: TryOnJobResponse;
   created: boolean;
+};
+
+export type CompleteTryOnJobInput = {
+  storageKey: string;
+  mediaType: string;
+  provider: string;
+  providerVersion?: string;
+  modelVersion?: string;
+  width?: number;
+  height?: number;
+  fileSize?: number;
+  expiresAt?: Date;
+};
+
+export type FailTryOnJobInput = {
+  code: string;
+  message: string;
 };
 
 function toApiStatus(status: DatabaseTryOnJobStatus): TryOnJobStatus {
@@ -370,5 +391,173 @@ export async function deleteTryOnJob(
     data: {
       success: true
     }
+  };
+}
+
+async function requireTryOnJobForLifecycle(
+  prisma: PrismaClient,
+  jobId: string
+): Promise<TryOnJobRecord> {
+  const job = await findTryOnJobById(prisma, jobId);
+
+  if (job === null) {
+    throw new TryOnServiceError("TRY_ON_JOB_NOT_FOUND", 404, "Try-on job was not found.");
+  }
+
+  return job;
+}
+
+function lifecycleTransitionConflict(): TryOnServiceError {
+  return new TryOnServiceError(
+    "TRY_ON_JOB_TRANSITION_CONFLICT",
+    409,
+    "Try-on job cannot move from its current state."
+  );
+}
+
+export async function markTryOnJobValidating(
+  prisma: PrismaClient,
+  jobId: string
+): Promise<TryOnJobResponse> {
+  await requireTryOnJobForLifecycle(prisma, jobId);
+
+  const job = await transitionTryOnJobStatus(prisma, jobId, [PrismaTryOnJobStatus.QUEUED], {
+    status: PrismaTryOnJobStatus.VALIDATING
+  });
+
+  if (job === null) {
+    throw lifecycleTransitionConflict();
+  }
+
+  return {
+    data: toTryOnJob(job)
+  };
+}
+
+export async function markTryOnJobProcessing(
+  prisma: PrismaClient,
+  jobId: string
+): Promise<TryOnJobResponse> {
+  await requireTryOnJobForLifecycle(prisma, jobId);
+
+  const job = await transitionTryOnJobStatus(prisma, jobId, [PrismaTryOnJobStatus.VALIDATING], {
+    status: PrismaTryOnJobStatus.PROCESSING,
+    processingStartedAt: new Date(),
+    attemptCount: {
+      increment: 1
+    }
+  });
+
+  if (job === null) {
+    throw lifecycleTransitionConflict();
+  }
+
+  return {
+    data: toTryOnJob(job)
+  };
+}
+
+export async function markTryOnJobSucceeded(
+  prisma: PrismaClient,
+  jobId: string,
+  input: CompleteTryOnJobInput
+): Promise<TryOnJobResponse> {
+  await requireTryOnJobForLifecycle(prisma, jobId);
+
+  const job = await completeTryOnJobWithResult(prisma, {
+    jobId,
+    statuses: [PrismaTryOnJobStatus.PROCESSING],
+    storageKey: input.storageKey,
+    mediaType: input.mediaType,
+    provider: input.provider,
+    ...(input.providerVersion === undefined ? {} : { providerVersion: input.providerVersion }),
+    ...(input.modelVersion === undefined ? {} : { modelVersion: input.modelVersion }),
+    ...(input.width === undefined ? {} : { width: input.width }),
+    ...(input.height === undefined ? {} : { height: input.height }),
+    ...(input.fileSize === undefined ? {} : { fileSize: input.fileSize }),
+    ...(input.expiresAt === undefined ? {} : { expiresAt: input.expiresAt })
+  });
+
+  if (job === null) {
+    throw lifecycleTransitionConflict();
+  }
+
+  return {
+    data: toTryOnJob(job)
+  };
+}
+
+export async function markTryOnJobFailed(
+  prisma: PrismaClient,
+  jobId: string,
+  input: FailTryOnJobInput
+): Promise<TryOnJobResponse> {
+  await requireTryOnJobForLifecycle(prisma, jobId);
+
+  const job = await transitionTryOnJobStatus(
+    prisma,
+    jobId,
+    [PrismaTryOnJobStatus.QUEUED, PrismaTryOnJobStatus.VALIDATING, PrismaTryOnJobStatus.PROCESSING],
+    {
+      status: PrismaTryOnJobStatus.FAILED,
+      failureCode: input.code,
+      failureMessage: input.message,
+      completedAt: new Date()
+    }
+  );
+
+  if (job === null) {
+    throw lifecycleTransitionConflict();
+  }
+
+  return {
+    data: toTryOnJob(job)
+  };
+}
+
+export async function markTryOnJobCancelled(
+  prisma: PrismaClient,
+  jobId: string
+): Promise<TryOnJobResponse> {
+  await requireTryOnJobForLifecycle(prisma, jobId);
+
+  const now = new Date();
+  const job = await transitionTryOnJobStatus(
+    prisma,
+    jobId,
+    [PrismaTryOnJobStatus.QUEUED, PrismaTryOnJobStatus.VALIDATING, PrismaTryOnJobStatus.PROCESSING],
+    {
+      status: PrismaTryOnJobStatus.CANCELLED,
+      cancelledAt: now,
+      completedAt: now
+    }
+  );
+
+  if (job === null) {
+    throw lifecycleTransitionConflict();
+  }
+
+  return {
+    data: toTryOnJob(job)
+  };
+}
+
+export async function heartbeatTryOnJob(
+  prisma: PrismaClient,
+  jobId: string
+): Promise<TryOnJobResponse> {
+  await requireTryOnJobForLifecycle(prisma, jobId);
+
+  const job = await touchTryOnJobHeartbeat(prisma, jobId, [
+    PrismaTryOnJobStatus.VALIDATING,
+    PrismaTryOnJobStatus.PROCESSING
+  ]);
+
+  if (job === null) {
+    throw lifecycleTransitionConflict();
+  }
+
+  return {
+    data: toTryOnJob(job)
   };
 }

@@ -22,7 +22,7 @@ export default [
       sourceType: "module",
       globals: globals.node,
       parserOptions: {
-        project: ["./tsconfig.json", "./tsconfig.seed.json"],
+        project: ["./tsconfig.json", "./tsconfig.seed.json", "./tsconfig.test.json"],
         tsconfigRootDir: rootDir
       }
     },
