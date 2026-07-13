@@ -111,6 +111,41 @@ uv run python -m src.main report `
 The report includes run totals, average duration, failed samples, and output
 artifact paths.
 
+### Research-Only CatVTON Direct Inference
+
+The CatVTON direct inference script is an explicit research-only path. It is
+not part of the default local dummy tooling and should be run only in an
+approved Colab research environment after license, input asset, and checkpoint
+rules are confirmed.
+
+The script assumes CatVTON source modules are importable on `PYTHONPATH` and
+that the verified model dependencies are installed in the Colab runtime.
+
+Example Colab command:
+
+```bash
+cd /content/velora/ml
+PYTHONPATH="/content/CatVTON:/content/velora/ml" python -m src.providers.catvton_research \
+  --person /content/velora-ai-lab/data/input/persons/sample_person.png \
+  --garment /content/velora-ai-lab/data/input/garments/sample_garment.png \
+  --cloth-type upper \
+  --output /content/velora-ai-lab/data/output/images/catvton-smoke-001.png \
+  --seed 42 \
+  --inference-steps 50 \
+  --guidance-scale 2.5 \
+  --base-model-path runwayml/stable-diffusion-inpainting \
+  --resume-path zhengchong/CatVTON \
+  --width 768 \
+  --height 1024 \
+  --mixed-precision fp16 \
+  --device cuda
+```
+
+This command may load or download CatVTON-related checkpoints through the
+upstream Hugging Face workflow. Do not run it against real user images, private
+wardrobe images, retailer images without permission, or production data. Do
+not commit downloaded weights or generated outputs.
+
 ## Output Locations
 
 The default runner config uses:
@@ -163,7 +198,7 @@ secure deletion.
 
 ## No-Model Boundary
 
-Current commands are limited to:
+Default local commands are limited to:
 
 - Environment inspection
 - Typed provider and runner configuration validation
@@ -180,6 +215,10 @@ They do not:
 - Run virtual try-on or any other inference
 - Connect to Velora backend, frontend, admin, databases, or production APIs
 - Use real user media
+
+The only exception is the explicit research-only CatVTON command documented
+above. It is isolated from backend/frontend/admin runtime code and must only be
+run in approved AI lab environments.
 
 Real model adapters require separate approval after license, privacy, hardware,
 dataset, and safety requirements are verified.
