@@ -122,10 +122,37 @@ class CatVTONAdapter(ModelAdapter):
         self._allow_tf32 = allow_tf32
         self._skip_safety_check = skip_safety_check
 
+    def with_options(
+        self,
+        *,
+        base_model_path: str | None = None,
+        resume_path: str | None = None,
+        inference_steps: int | None = None,
+        guidance_scale: float | None = None,
+        device: str | None = None,
+    ) -> CatVTONAdapter:
+        """Return a copy configured for one research smoke command."""
+        return CatVTONAdapter(
+            output_dir=self._output_dir,
+            runner=self._runner,
+            base_model_path=base_model_path or self._base_model_path,
+            resume_path=resume_path or self._resume_path,
+            inference_steps=(
+                inference_steps if inference_steps is not None else self._inference_steps
+            ),
+            guidance_scale=(guidance_scale if guidance_scale is not None else self._guidance_scale),
+            mixed_precision=self._mixed_precision,
+            device=device or self._device,
+            allow_tf32=self._allow_tf32,
+            skip_safety_check=self._skip_safety_check,
+        )
+
     def execute(self, request: ModelRequest) -> ModelResult:
         """Execute CatVTON research inference and normalize success or failure."""
         started_clock = time.perf_counter()
-        output_path = self._output_dir / f"{_safe_output_stem(request.request_id)}.png"
+        output_path = request.output_path or self._output_dir / (
+            f"{_safe_output_stem(request.request_id)}.png"
+        )
 
         try:
             research_module = _load_research_module()

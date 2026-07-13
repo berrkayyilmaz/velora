@@ -21,6 +21,7 @@ class ModelRequest:
     target_width: int
     target_height: int
     seed: int
+    output_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)

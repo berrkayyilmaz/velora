@@ -10,6 +10,8 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from src.adapters import ModelRequest, ModelResult, create_adapter_registry
+from src.adapters.catvton import CatVTONAdapter
 from src.benchmark import (
     BenchmarkReportError,
     create_run_id,
@@ -100,6 +102,36 @@ def build_parser() -> argparse.ArgumentParser:
         help="Benchmark dataset manifest JSON path.",
     )
     echo_parser.add_argument("--run-id", help="Optional filesystem-safe run identifier.")
+
+    catvton_parser = subparsers.add_parser(
+        "catvton-research",
+        help="Run the research-only CatVTON adapter for one smoke request.",
+    )
+    catvton_parser.add_argument("--person", type=Path, required=True, help="Person image path.")
+    catvton_parser.add_argument("--garment", type=Path, required=True, help="Garment image path.")
+    catvton_parser.add_argument(
+        "--cloth-type",
+        choices=("upper", "lower", "overall"),
+        required=True,
+        help="CatVTON automatic mask cloth type.",
+    )
+    catvton_parser.add_argument("--output", type=Path, required=True, help="Output image path.")
+    catvton_parser.add_argument("--seed", type=int, default=42)
+    catvton_parser.add_argument("--inference-steps", type=int, default=30)
+    catvton_parser.add_argument("--guidance-scale", type=float, default=2.5)
+    catvton_parser.add_argument("--width", type=int, default=768)
+    catvton_parser.add_argument("--height", type=int, default=1024)
+    catvton_parser.add_argument("--device", default="cuda")
+    catvton_parser.add_argument(
+        "--base-model-path",
+        default="runwayml/stable-diffusion-inpainting",
+        help="Base inpainting model path or identifier.",
+    )
+    catvton_parser.add_argument(
+        "--resume-path",
+        default="zhengchong/CatVTON",
+        help="CatVTON checkpoint path or identifier.",
+    )
 
     report_parser = subparsers.add_parser(
         "report",
@@ -202,6 +234,53 @@ def execute_echo_batch(args: argparse.Namespace) -> int:
     return 0 if summary.failure_count == 0 else 1
 
 
+def model_result_payload(result: ModelResult) -> dict[str, object]:
+    """Return a JSON-serializable normalized model result."""
+    return {
+        "durationMs": result.duration_ms,
+        "error": result.error,
+        "height": result.height,
+        "metadata": dict(result.metadata),
+        "modelId": result.model_id,
+        "modelVersion": result.model_version,
+        "outputId": result.output_id,
+        "outputPath": str(result.output_path) if result.output_path is not None else None,
+        "seed": result.seed,
+        "status": result.status,
+        "warnings": list(result.warnings),
+        "width": result.width,
+    }
+
+
+def execute_catvton_adapter(args: argparse.Namespace) -> int:
+    """Execute the research-only CatVTON adapter through the adapter registry."""
+    adapter = create_adapter_registry().get("catvton-research")
+    if isinstance(adapter, CatVTONAdapter):
+        adapter = adapter.with_options(
+            base_model_path=args.base_model_path,
+            resume_path=args.resume_path,
+            inference_steps=args.inference_steps,
+            guidance_scale=args.guidance_scale,
+            device=args.device,
+        )
+
+    result = adapter.execute(
+        ModelRequest(
+            request_id=args.output.stem,
+            person_path=args.person,
+            garment_path=args.garment,
+            mask_path=None,
+            garment_category=args.cloth_type,
+            target_width=args.width,
+            target_height=args.height,
+            seed=args.seed,
+            output_path=args.output,
+        )
+    )
+    print(json.dumps(model_result_payload(result), indent=2, sort_keys=True))
+    return 0 if result.status == "succeeded" else 1
+
+
 def generate_report(args: argparse.Namespace) -> int:
     """Generate a Markdown report from persisted benchmark JSON."""
     output_path = generate_benchmark_report(args.summary, args.output)
@@ -242,6 +321,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             return execute_echo_batch(args)
         except (DatasetManifestError, RunnerConfigError, ValueError) as error:
+            parser.error(str(error))
+
+    if args.command == "catvton-research":
+        try:
+            return execute_catvton_adapter(args)
+        except ValueError as error:
             parser.error(str(error))
 
     if args.command == "report":
