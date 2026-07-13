@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import tempfile
+import types
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from src.providers.catvton_research import (
     CatVTONResearchConfig,
     CatVTONResearchError,
+    _load_runtime_symbols,
     build_parser,
     config_from_args,
     validate_config,
@@ -134,6 +137,61 @@ class CatVTONResearchConfigTests(unittest.TestCase):
         self.assertEqual(config.seed, 7)
         self.assertEqual(config.inference_steps, 25)
         self.assertEqual(config.guidance_scale, 3.0)
+
+
+class _MockHubModule(types.ModuleType):
+    @property
+    def snapshot_download(self) -> object:
+        def _download(*, repo_id: str) -> str:
+            return f"/mocked/{repo_id}"
+
+        return _download
+
+
+class CatVTONRuntimeSymbolTests(unittest.TestCase):
+    """Verify lazy runtime symbol loading with mocked heavyweight modules."""
+
+    def test_loads_snapshot_download_from_huggingface_hub_attribute(self) -> None:
+        torch_module = types.ModuleType("torch")
+        image_module = types.ModuleType("PIL.Image")
+        hub_module = _MockHubModule("huggingface_hub")
+        diffusers_module = types.ModuleType("diffusers")
+        image_processor_module = types.ModuleType("diffusers.image_processor")
+        model_module = types.ModuleType("model")
+        cloth_masker_module = types.ModuleType("model.cloth_masker")
+        pipeline_module = types.ModuleType("model.pipeline")
+        utils_module = types.ModuleType("utils")
+
+        torch_module.float32 = object()
+        torch_module.float16 = object()
+        torch_module.bfloat16 = object()
+        image_module.open = object()
+        image_processor_module.VaeImageProcessor = object()
+        cloth_masker_module.AutoMasker = object()
+        pipeline_module.CatVTONPipeline = object()
+        utils_module.resize_and_crop = object()
+        utils_module.resize_and_padding = object()
+
+        modules = {
+            "torch": torch_module,
+            "PIL": types.ModuleType("PIL"),
+            "PIL.Image": image_module,
+            "huggingface_hub": hub_module,
+            "diffusers": diffusers_module,
+            "diffusers.image_processor": image_processor_module,
+            "model": model_module,
+            "model.cloth_masker": cloth_masker_module,
+            "model.pipeline": pipeline_module,
+            "utils": utils_module,
+        }
+
+        with patch.dict("sys.modules", modules):
+            runtime = _load_runtime_symbols()
+
+        self.assertEqual(
+            runtime.snapshot_download(repo_id="zhengchong/CatVTON"),
+            "/mocked/zhengchong/CatVTON",
+        )
 
 
 if __name__ == "__main__":

@@ -63,6 +63,10 @@ class _SnapshotDownload(Protocol):
         """Download or resolve a Hugging Face snapshot."""
 
 
+class _HuggingFaceHubModule(Protocol):
+    snapshot_download: _SnapshotDownload
+
+
 class _VaeImageProcessor(Protocol):
     def blur(self, mask: object, *, blur_factor: int) -> object:
         """Blur a mask."""
@@ -295,7 +299,7 @@ def _load_runtime_symbols() -> _RuntimeSymbols:
     """Load heavyweight CatVTON runtime symbols only during execution."""
     torch_module = cast(_TorchModule, importlib.import_module("torch"))
     image_module = cast(_ImageModule, importlib.import_module("PIL.Image"))
-    hub_module = importlib.import_module("huggingface_hub")
+    hub_module = cast(_HuggingFaceHubModule, importlib.import_module("huggingface_hub"))
     diffusers_image_processor = importlib.import_module("diffusers.image_processor")
     cloth_masker_module = importlib.import_module("model.cloth_masker")
     pipeline_module = importlib.import_module("model.pipeline")
@@ -304,7 +308,7 @@ def _load_runtime_symbols() -> _RuntimeSymbols:
     return _RuntimeSymbols(
         torch=torch_module,
         image=image_module,
-        snapshot_download=cast(_SnapshotDownload, hub_module.__dict__["snapshot_download"]),
+        snapshot_download=hub_module.snapshot_download,
         vae_image_processor=cast(
             _VaeImageProcessorFactory,
             diffusers_image_processor.__dict__["VaeImageProcessor"],
