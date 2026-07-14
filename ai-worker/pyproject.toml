@@ -1,0 +1,45 @@
+[project]
+name = "velora-ai-worker"
+version = "0.1.0"
+description = "Remote GPU worker foundation for Velora try-on jobs."
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "fastapi>=0.116.0",
+  "uvicorn[standard]>=0.35.0",
+]
+
+[dependency-groups]
+dev = [
+  "black>=25.0.0",
+  "httpx>=0.28.0",
+  "mypy>=1.17.0",
+  "pytest>=8.4.0",
+  "ruff>=0.12.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+
+[tool.black]
+target-version = ["py311"]
+line-length = 100
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+strict = true
+warn_unused_configs = true
+show_error_codes = true
+pretty = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
