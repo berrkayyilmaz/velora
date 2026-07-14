@@ -15,7 +15,8 @@
     "format:check": "prettier --check .",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "tryon:remote-smoke": "tsx src/scripts/remote-catvton-smoke.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
