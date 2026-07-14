@@ -161,7 +161,7 @@ function normalizeExecutionFailure(result: TryOnInferenceExecutionResult): TryOn
   }
 
   return {
-    code: "try_on_executor_failed",
+    code: result.errorCode ?? "try_on_executor_failed",
     message: result.stderr.trim() || `Try-on execution failed with exit code ${result.exitCode}.`,
     retryable: false
   };
@@ -264,7 +264,12 @@ export async function executeClaimedTryOnJob(
       ...(options.providerVersion === undefined
         ? {}
         : { providerVersion: options.providerVersion }),
-      ...(options.modelVersion === undefined ? {} : { modelVersion: options.modelVersion })
+      ...(executionResult.modelVersion === undefined && options.modelVersion === undefined
+        ? {}
+        : { modelVersion: executionResult.modelVersion ?? options.modelVersion }),
+      ...(executionResult.width === undefined ? {} : { width: executionResult.width }),
+      ...(executionResult.height === undefined ? {} : { height: executionResult.height }),
+      ...(executionResult.fileSize === undefined ? {} : { fileSize: executionResult.fileSize })
     });
 
     return {

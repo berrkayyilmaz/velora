@@ -24,6 +24,12 @@ export type TryOnInferenceExecutionResult = {
   durationMs: number;
   timedOut: boolean;
   outputArtifactPath: string;
+  errorCode?: string;
+  width?: number;
+  height?: number;
+  fileSize?: number;
+  modelId?: string;
+  modelVersion?: string;
 };
 
 export type TryOnInferenceExecutor = {
