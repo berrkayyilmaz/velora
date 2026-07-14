@@ -11,6 +11,14 @@ export default [
     ignores: ["dist/**", "node_modules/**", "coverage/**", "create-admin.cjs"]
   },
   js.configs.recommended,
+  {
+    files: ["tests/fixtures/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: globals.node
+    }
+  },
   ...tseslint.configs.recommendedTypeChecked.map((config) => ({
     ...config,
     files: ["src/**/*.ts", "tests/**/*.ts", "prisma/**/*.ts"]

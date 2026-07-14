@@ -391,8 +391,11 @@ export async function completeTryOnJobWithResult(
       return null;
     }
 
-    await tx.tryOnResult.create({
-      data: {
+    await tx.tryOnResult.upsert({
+      where: {
+        jobId: input.jobId
+      },
+      create: {
         jobId: input.jobId,
         userId: job.userId,
         storageKey: input.storageKey,
@@ -403,6 +406,18 @@ export async function completeTryOnJobWithResult(
         ...(input.height === undefined ? {} : { height: input.height }),
         ...(input.fileSize === undefined ? {} : { fileSize: input.fileSize }),
         expiresAt: input.expiresAt ?? job.expiresAt
+      },
+      update: {
+        storageKey: input.storageKey,
+        mediaType: input.mediaType,
+        provider: input.provider,
+        ...(input.modelVersion === undefined ? {} : { modelVersion: input.modelVersion }),
+        ...(input.width === undefined ? {} : { width: input.width }),
+        ...(input.height === undefined ? {} : { height: input.height }),
+        ...(input.fileSize === undefined ? {} : { fileSize: input.fileSize }),
+        status: TryOnResultStatus.READY,
+        expiresAt: input.expiresAt ?? job.expiresAt,
+        deletedAt: null
       }
     });
 
