@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from threading import Lock
 from uuid import uuid4
 
-from src.executor import FakeInferenceExecutor
+from src.executor import FakeInferenceExecutor, InferenceExecutor
 from src.models import (
     ResultMetadataResponse,
     SubmitInferenceJobRequest,
@@ -26,6 +26,7 @@ class WorkerJob:
     status: WorkerJobStatus = "queued"
     error: WorkerError | None = None
     result: ResultMetadataResponse | None = None
+    duration_ms: float | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
@@ -33,7 +34,7 @@ class WorkerJob:
 class InMemoryJobStore:
     """Small replaceable job store used only by the worker foundation."""
 
-    def __init__(self, executor: FakeInferenceExecutor | None = None) -> None:
+    def __init__(self, executor: InferenceExecutor | None = None) -> None:
         self._executor = executor or FakeInferenceExecutor()
         self._jobs: dict[str, WorkerJob] = {}
         self._lock = Lock()
@@ -82,9 +83,11 @@ class InMemoryJobStore:
                     job.status = "succeeded"
                     job.result = result.result
                     job.error = None
+                    job.duration_ms = result.duration_ms
                     return job
 
                 job.status = "failed"
+                job.duration_ms = result.duration_ms
                 job.error = result.error or WorkerError(
                     code="fake_inference_failed",
                     message="Fake deterministic inference failed.",
@@ -107,4 +110,6 @@ class InMemoryJobStore:
             fileSize=None if result is None else result.fileSize,
             modelId=None if result is None else result.modelId,
             modelVersion=None if result is None else result.modelVersion,
+            durationMs=job.duration_ms,
+            metadata=None if result is None else result.metadata,
         )

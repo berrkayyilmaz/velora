@@ -75,6 +75,8 @@ class WorkerJobStatusResponse(BaseModel):
     fileSize: int | None = None
     modelId: str | None = None
     modelVersion: str | None = None
+    durationMs: float | None = None
+    metadata: dict[str, str] | None = None
 
 
 class CancelWorkerJobResponse(BaseModel):
@@ -97,6 +99,8 @@ class ResultMetadataResponse(BaseModel):
     fileSize: int = Field(ge=0)
     modelId: str | None = None
     modelVersion: str | None = None
+    durationMs: float | None = None
+    metadata: dict[str, str] | None = None
 
 
 class HealthResponse(BaseModel):

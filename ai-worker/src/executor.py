@@ -1,20 +1,29 @@
-"""Deterministic fake inference executor for worker foundation tests."""
+"""Inference executor contracts and deterministic fake executor."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 from src.models import ResultMetadataResponse, SubmitInferenceJobRequest, WorkerError
 
 
 @dataclass(frozen=True)
-class FakeInferenceResult:
-    """Normalized fake executor result."""
+class InferenceResult:
+    """Normalized executor result persisted by the worker job store."""
 
     success: bool
     result: ResultMetadataResponse | None = None
     error: WorkerError | None = None
+    duration_ms: float = 0.0
+
+
+class InferenceExecutor(Protocol):
+    """Executor interface for fake, local, or remote model runners."""
+
+    def execute(self, worker_job_id: str, request: SubmitInferenceJobRequest) -> InferenceResult:
+        """Execute one worker job and return a normalized result."""
 
 
 class FakeInferenceExecutor:
@@ -26,11 +35,9 @@ class FakeInferenceExecutor:
     width = 768
     height = 1024
 
-    def execute(
-        self, worker_job_id: str, request: SubmitInferenceJobRequest
-    ) -> FakeInferenceResult:
+    def execute(self, worker_job_id: str, request: SubmitInferenceJobRequest) -> InferenceResult:
         if self._should_fail(request):
-            return FakeInferenceResult(
+            return InferenceResult(
                 success=False,
                 error=WorkerError(
                     code="fake_inference_failed",
@@ -49,7 +56,7 @@ class FakeInferenceExecutor:
         )
         output_path.write_text(output_body, encoding="utf-8")
 
-        return FakeInferenceResult(
+        return InferenceResult(
             success=True,
             result=ResultMetadataResponse(
                 workerJobId=worker_job_id,
@@ -61,6 +68,7 @@ class FakeInferenceExecutor:
                 fileSize=output_path.stat().st_size,
                 modelId=self.model_id,
                 modelVersion=self.model_version,
+                durationMs=0.0,
             ),
         )
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, status
 
+from src.config import load_worker_config
+from src.factory import create_executor
 from src.models import (
     CancelWorkerJobResponse,
     HealthResponse,
@@ -23,7 +25,7 @@ def create_app(job_store: InMemoryJobStore | None = None) -> FastAPI:
         version="0.1.0",
         description="Remote try-on worker foundation with deterministic fake inference.",
     )
-    store = job_store or InMemoryJobStore()
+    store = job_store or InMemoryJobStore(create_executor(load_worker_config()))
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
