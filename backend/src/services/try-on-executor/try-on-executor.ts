@@ -23,6 +23,8 @@ export type TryOnInferenceExecutionResult = {
   stderr: string;
   durationMs: number;
   timedOut: boolean;
+  cancelled?: boolean;
+  retryable?: boolean;
   outputArtifactPath: string;
   errorCode?: string;
   width?: number;

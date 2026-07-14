@@ -27,6 +27,7 @@ const envSchema = z.object({
   ),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60_000),
+  TRY_ON_EXECUTOR_MODE: z.enum(["disabled", "local-cli", "remote-http"]).default("disabled"),
   TRY_ON_ML_ENABLED: z
     .string()
     .trim()
@@ -61,7 +62,16 @@ const envSchema = z.object({
   TRY_ON_ML_DEVICE: z.string().trim().default("cuda"),
   TRY_ON_ML_BASE_MODEL_PATH: z.string().trim().default("runwayml/stable-diffusion-inpainting"),
   TRY_ON_ML_RESUME_PATH: z.string().trim().default("zhengchong/CatVTON"),
-  TRY_ON_ML_TIMEOUT_MS: z.coerce.number().int().positive().default(600_000)
+  TRY_ON_ML_TIMEOUT_MS: z.coerce.number().int().positive().default(600_000),
+  TRY_ON_REMOTE_WORKER_BASE_URL: z.string().trim().optional(),
+  TRY_ON_REMOTE_WORKER_API_KEY: z.string().trim().optional(),
+  TRY_ON_REMOTE_WORKER_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  TRY_ON_REMOTE_WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(1_000),
+  TRY_ON_REMOTE_WORKER_MAX_WAIT_MS: z.coerce.number().int().positive().default(600_000),
+  TRY_ON_REMOTE_WORKER_SUBMIT_PATH: z.string().trim().default("/try-on/jobs"),
+  TRY_ON_REMOTE_WORKER_STATUS_PATH: z.string().trim().default("/try-on/jobs/{workerJobId}/status"),
+  TRY_ON_REMOTE_WORKER_CANCEL_PATH: z.string().trim().default("/try-on/jobs/{workerJobId}/cancel"),
+  TRY_ON_REMOTE_WORKER_RESULT_PATH: z.string().trim().default("/try-on/jobs/{workerJobId}/result")
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

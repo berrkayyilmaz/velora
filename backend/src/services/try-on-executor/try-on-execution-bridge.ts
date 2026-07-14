@@ -52,6 +52,7 @@ export type TryOnExecutionLifecycle = {
   markProcessing(jobId: string): Promise<TryOnJobRecord | null>;
   markSucceeded(jobId: string, input: TryOnExecutionSuccessInput): Promise<TryOnJobRecord | null>;
   markFailed(jobId: string, input: TryOnExecutionFailureInput): Promise<TryOnJobRecord | null>;
+  markCancelled(jobId: string): Promise<TryOnJobRecord | null>;
 };
 
 export type TryOnExecutionBridgeOptions = {
@@ -147,6 +148,21 @@ export function createPrismaTryOnExecutionLifecycle(prisma: PrismaClient): TryOn
           failureMessage: input.message,
           completedAt: new Date()
         }
+      ),
+    markCancelled: (jobId) =>
+      transitionTryOnJobStatus(
+        prisma,
+        jobId,
+        [
+          RepositoryTryOnJobStatus.QUEUED,
+          RepositoryTryOnJobStatus.VALIDATING,
+          RepositoryTryOnJobStatus.PROCESSING
+        ],
+        {
+          status: RepositoryTryOnJobStatus.CANCELLED,
+          cancelledAt: new Date(),
+          completedAt: new Date()
+        }
       )
   };
 }
@@ -163,7 +179,7 @@ function normalizeExecutionFailure(result: TryOnInferenceExecutionResult): TryOn
   return {
     code: result.errorCode ?? "try_on_executor_failed",
     message: result.stderr.trim() || `Try-on execution failed with exit code ${result.exitCode}.`,
-    retryable: false
+    retryable: result.retryable ?? false
   };
 }
 
@@ -189,6 +205,17 @@ async function markBridgeFailure(
   return {
     status: "failed",
     error
+  };
+}
+
+async function markBridgeCancellation(
+  lifecycle: TryOnExecutionLifecycle,
+  jobId: string
+): Promise<TryOnWorkerProcessResult> {
+  await lifecycle.markCancelled(jobId);
+
+  return {
+    status: "cancelled"
   };
 }
 
@@ -244,6 +271,10 @@ export async function executeClaimedTryOnJob(
     const executionResult = await executor.execute(request);
 
     if (!executionResult.success) {
+      if (executionResult.cancelled === true) {
+        return markBridgeCancellation(lifecycle, claim.jobId);
+      }
+
       return markBridgeFailure(lifecycle, claim.jobId, normalizeExecutionFailure(executionResult));
     }
 

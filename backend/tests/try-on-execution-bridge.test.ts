@@ -142,6 +142,21 @@ class FakeTryOnExecutionLifecycle implements TryOnExecutionLifecycle {
 
     return Promise.resolve(this.job);
   }
+
+  markCancelled(): Promise<TryOnJobRecord | null> {
+    if (this.job === null) {
+      return Promise.resolve(null);
+    }
+
+    this.job = {
+      ...this.job,
+      status: TryOnJobStatus.CANCELLED,
+      cancelledAt: new Date(),
+      completedAt: new Date()
+    };
+
+    return Promise.resolve(this.job);
+  }
 }
 
 function createExecutor(mode: string, timeoutMs = 2_000): LocalProcessTryOnExecutor {
