@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, status
 
 from src.config import load_worker_config
@@ -17,15 +21,27 @@ from src.models import (
 from src.storage import InMemoryJobStore
 
 
-def create_app(job_store: InMemoryJobStore | None = None) -> FastAPI:
+def create_app(job_store: InMemoryJobStore | None = None, *, max_workers: int = 1) -> FastAPI:
     """Create the FastAPI worker app."""
+    store = job_store or InMemoryJobStore(create_executor(load_worker_config()))
+    executor_pool = ThreadPoolExecutor(
+        max_workers=max_workers,
+        thread_name_prefix="velora-ai-worker",
+    )
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        try:
+            yield
+        finally:
+            executor_pool.shutdown(wait=False, cancel_futures=True)
 
     app = FastAPI(
         title="Velora AI Worker",
         version="0.1.0",
         description="Remote try-on worker foundation with deterministic fake inference.",
+        lifespan=lifespan,
     )
-    store = job_store or InMemoryJobStore(create_executor(load_worker_config()))
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
@@ -38,11 +54,13 @@ def create_app(job_store: InMemoryJobStore | None = None) -> FastAPI:
     )
     def submit_job(request: SubmitInferenceJobRequest) -> SubmitInferenceJobResponse:
         job = store.submit(request)
-        return SubmitInferenceJobResponse(workerJobId=job.worker_job_id, status=job.status)
+        response = SubmitInferenceJobResponse(workerJobId=job.worker_job_id, status=job.status)
+        executor_pool.submit(store.execute_job, job.worker_job_id)
+        return response
 
     @app.get("/jobs/{worker_job_id}", response_model=WorkerJobStatusResponse)
     def get_job(worker_job_id: str) -> WorkerJobStatusResponse:
-        job = store.advance(worker_job_id)
+        job = store.get(worker_job_id)
 
         if job is None:
             raise HTTPException(
