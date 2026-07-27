@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+
 import type { ZodSchema } from "zod";
 
 import {
@@ -6,6 +8,7 @@ import {
   remoteTryOnResultMetadataResponseSchema,
   remoteTryOnSubmitJobResponseSchema,
   type RemoteTryOnCancelJobResponse,
+  type RemoteTryOnArtifactDownload,
   type RemoteTryOnJobStatusResponse,
   type RemoteTryOnResultMetadataResponse,
   type RemoteTryOnSubmitJobRequest,
@@ -22,6 +25,7 @@ export type RemoteHttpTryOnWorkerClientConfig = {
   statusPathTemplate: string;
   cancelPathTemplate: string;
   resultPathTemplate: string;
+  artifactPathTemplate: string;
 };
 
 export class RemoteTryOnWorkerClientError extends Error {
@@ -143,6 +147,68 @@ export class RemoteHttpTryOnWorkerClient implements RemoteTryOnWorkerClient {
       undefined,
       remoteTryOnResultMetadataResponseSchema
     );
+  }
+
+  async downloadArtifact(workerJobId: string): Promise<RemoteTryOnArtifactDownload> {
+    const url = buildUrl(
+      this.config,
+      renderWorkerJobPath(this.config.artifactPathTemplate, workerJobId)
+    );
+    const abortController = new AbortController();
+    const timeout = setTimeout(() => {
+      abortController.abort();
+    }, this.config.timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          accept: "image/*",
+          ...(this.config.apiKey === undefined
+            ? {}
+            : { authorization: `Bearer ${this.config.apiKey}` })
+        },
+        signal: abortController.signal
+      });
+
+      if (!response.ok) {
+        throw new RemoteTryOnWorkerClientError(
+          "try_on_remote_artifact_http_error",
+          `Remote try-on worker artifact download returned HTTP ${response.status}.`,
+          response.status >= 500
+        );
+      }
+
+      const bytes = Buffer.from(await response.arrayBuffer());
+      return {
+        bytes,
+        mediaType: response.headers.get("content-type") ?? "application/octet-stream",
+        fileSize: bytes.byteLength
+      };
+    } catch (error) {
+      if (error instanceof RemoteTryOnWorkerClientError) {
+        throw error;
+      }
+
+      const errorName =
+        typeof error === "object" && error !== null && "name" in error ? String(error.name) : "";
+
+      if (errorName === "AbortError") {
+        throw new RemoteTryOnWorkerClientError(
+          "try_on_remote_artifact_timeout",
+          "Remote try-on worker artifact download timed out.",
+          true
+        );
+      }
+
+      throw new RemoteTryOnWorkerClientError(
+        "try_on_remote_artifact_network_error",
+        "Remote try-on worker artifact download failed.",
+        true
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   private async send<T>(

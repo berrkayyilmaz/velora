@@ -27,6 +27,7 @@ export type TryOnInferenceExecutionResult = {
   retryable?: boolean;
   outputArtifactPath: string;
   errorCode?: string;
+  mediaType?: string;
   width?: number;
   height?: number;
   fileSize?: number;

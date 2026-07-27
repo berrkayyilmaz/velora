@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 from threading import Lock
 from uuid import uuid4
 
@@ -40,10 +41,22 @@ class InMemoryJobStore:
         self._jobs: dict[str, WorkerJob] = {}
         self._lock = Lock()
 
-    def submit(self, request: SubmitInferenceJobRequest) -> WorkerJob:
+    def submit(
+        self,
+        request: SubmitInferenceJobRequest,
+        *,
+        output_directory: Path | None = None,
+    ) -> WorkerJob:
         with self._lock:
             worker_job_id = f"worker-{uuid4()}"
-            job = WorkerJob(worker_job_id=worker_job_id, request=request)
+            stored_request = (
+                request
+                if output_directory is None
+                else request.model_copy(
+                    update={"outputArtifactPath": str(output_directory / f"{worker_job_id}.png")}
+                )
+            )
+            job = WorkerJob(worker_job_id=worker_job_id, request=stored_request)
             self._jobs[worker_job_id] = job
             return job
 

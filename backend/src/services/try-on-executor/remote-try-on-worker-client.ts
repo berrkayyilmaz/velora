@@ -42,7 +42,9 @@ export const remoteTryOnResultMetadataResponseSchema = z.object({
   height: z.number().int().positive().optional(),
   fileSize: z.number().int().nonnegative().optional(),
   modelId: z.string().optional(),
-  modelVersion: z.string().optional()
+  modelVersion: z.string().optional(),
+  durationMs: z.number().nonnegative().optional(),
+  metadata: z.record(z.string()).nullable().optional()
 });
 
 export type RemoteTryOnWorkerStatus = z.infer<typeof remoteTryOnWorkerStatusSchema>;
@@ -55,10 +57,16 @@ export type RemoteTryOnCancelJobResponse = z.infer<typeof remoteTryOnCancelJobRe
 export type RemoteTryOnResultMetadataResponse = z.infer<
   typeof remoteTryOnResultMetadataResponseSchema
 >;
+export type RemoteTryOnArtifactDownload = {
+  bytes: Uint8Array;
+  mediaType: string;
+  fileSize: number;
+};
 
 export type RemoteTryOnWorkerClient = {
   submitInferenceJob(request: RemoteTryOnSubmitJobRequest): Promise<RemoteTryOnSubmitJobResponse>;
   getWorkerJobStatus(workerJobId: string): Promise<RemoteTryOnJobStatusResponse>;
   cancelWorkerJob(workerJobId: string): Promise<RemoteTryOnCancelJobResponse>;
   fetchResultMetadata(workerJobId: string): Promise<RemoteTryOnResultMetadataResponse>;
+  downloadArtifact(workerJobId: string): Promise<RemoteTryOnArtifactDownload>;
 };

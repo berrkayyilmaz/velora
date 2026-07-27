@@ -41,6 +41,7 @@ class WorkerConfig:
     """Top-level worker configuration."""
 
     executor_mode: ExecutorMode
+    artifact_output_directory: Path
     catvton: CatVTONExecutorConfig
 
 
@@ -76,6 +77,9 @@ def load_worker_config(env: Mapping[str, str] | None = None) -> WorkerConfig:
 
     return WorkerConfig(
         executor_mode=executor_mode,
+        artifact_output_directory=Path(
+            values.get("VELORA_AI_WORKER_OUTPUT_DIRECTORY", "data/output").strip() or "data/output"
+        ),
         catvton=CatVTONExecutorConfig(
             python_command=values.get("CATVTON_PYTHON_COMMAND", "python").strip() or "python",
             velora_ml_path=_optional_path(values.get("VELORA_ML_PATH")),

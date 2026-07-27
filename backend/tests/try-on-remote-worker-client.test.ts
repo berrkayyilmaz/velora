@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
@@ -174,6 +174,7 @@ function createRemoteClientConfig(
     statusPathTemplate: "/try-on/jobs/{workerJobId}/status",
     cancelPathTemplate: "/try-on/jobs/{workerJobId}/cancel",
     resultPathTemplate: "/try-on/jobs/{workerJobId}/result",
+    artifactPathTemplate: "/try-on/jobs/{workerJobId}/artifact",
     ...overrides
   };
 }
@@ -200,7 +201,6 @@ async function runRemoteBridge(scenario: Parameters<typeof startFakeRemoteTryOnW
     const lifecycle = new FakeTryOnExecutionLifecycle(createTryOnJobRecord());
     const queue = new LocalTryOnJobQueue();
     const request = await createRequest();
-
     await queue.enqueue({ jobId: testJobId });
 
     const client = new RemoteHttpTryOnWorkerClient(createRemoteClientConfig(fakeWorker.baseUrl));
@@ -272,6 +272,29 @@ void describe("Remote HTTP try-on worker client", () => {
     }
   });
 
+  void it("downloads artifact bytes from the configured endpoint with auth headers", async () => {
+    const fakeWorker = await startFakeRemoteTryOnWorker({
+      artifactBytes: "downloaded artifact bytes"
+    });
+
+    try {
+      const client = new RemoteHttpTryOnWorkerClient(
+        createRemoteClientConfig(fakeWorker.baseUrl, {
+          apiKey: "test-worker-key"
+        })
+      );
+      const artifact = await client.downloadArtifact("remote-job-1");
+
+      assert.equal(Buffer.from(artifact.bytes).toString("utf8"), "downloaded artifact bytes");
+      assert.equal(artifact.mediaType, "image/png");
+      assert.equal(artifact.fileSize, Buffer.byteLength("downloaded artifact bytes"));
+      assert.deepEqual(fakeWorker.artifactRequestPaths, ["/try-on/jobs/remote-job-1/artifact"]);
+      assert.equal(fakeWorker.artifactRequestHeaders[0]?.authorization, "Bearer test-worker-key");
+    } finally {
+      await fakeWorker.close();
+    }
+  });
+
   void it("returns retry-safe network errors", async () => {
     const request = await createRequest();
     const client = new RemoteHttpTryOnWorkerClient(createRemoteClientConfig("http://127.0.0.1:1"));
@@ -290,7 +313,12 @@ void describe("Remote HTTP try-on worker client", () => {
   void it("normalizes a remote success result through the execution bridge", async () => {
     const { result, lifecycle } = await runRemoteBridge({
       statusSequence: ["processing", "succeeded"],
-      createOutputArtifact: true
+      artifactBytes: "downloaded remote artifact\n",
+      artifactContentType: "image/jpeg",
+      result: {
+        outputArtifactPath: "/content/velora/ai-worker/data/output/remote-job-1.png",
+        mediaType: "image/jpeg"
+      }
     });
 
     assert.deepEqual(result, {
@@ -299,9 +327,54 @@ void describe("Remote HTTP try-on worker client", () => {
     });
     assert.equal(lifecycle.currentJob?.status, TryOnJobStatus.SUCCEEDED);
     assert.equal(lifecycle.succeededInput?.provider, "remote-http");
+    assert.equal(lifecycle.succeededInput?.mediaType, "image/jpeg");
     assert.equal(lifecycle.succeededInput?.modelVersion, "fake-remote");
     assert.equal(lifecycle.succeededInput?.width, 768);
+    assert.equal(
+      lifecycle.succeededInput?.fileSize,
+      Buffer.byteLength("downloaded remote artifact\n")
+    );
+    assert.notEqual(
+      lifecycle.succeededInput?.storageKey,
+      "/content/velora/ai-worker/data/output/remote-job-1.png"
+    );
+    assert.equal(
+      await readFile(lifecycle.succeededInput?.storageKey ?? "", "utf8"),
+      "downloaded remote artifact\n"
+    );
     assert.equal(lifecycle.currentJob?.result?.status, TryOnResultStatus.READY);
+  });
+
+  void it("creates parent directories and returns the backend-local output path", async () => {
+    const fakeWorker = await startFakeRemoteTryOnWorker({
+      statusSequence: ["succeeded"],
+      artifactBytes: "nested local artifact",
+      result: {
+        outputArtifactPath: "/content/remote-only/result.png"
+      }
+    });
+
+    try {
+      const outputDirectory = await mkdtemp(path.join(os.tmpdir(), "velora-nested-artifact-"));
+      const localOutputPath = path.join(outputDirectory, "nested", "result.png");
+      const request = await createRequest();
+      request.outputArtifactPath = localOutputPath;
+      const client = new RemoteHttpTryOnWorkerClient(createRemoteClientConfig(fakeWorker.baseUrl));
+      const executor = new RemoteHttpTryOnExecutor(client, {
+        enabled: true,
+        pollIntervalMs: 1,
+        maxWaitMs: 1_000
+      });
+
+      const result = await executor.execute(request);
+
+      assert.equal(result.success, true);
+      assert.equal(result.outputArtifactPath, localOutputPath);
+      assert.equal(result.fileSize, Buffer.byteLength("nested local artifact"));
+      assert.equal(await readFile(localOutputPath, "utf8"), "nested local artifact");
+    } finally {
+      await fakeWorker.close();
+    }
   });
 
   void it("normalizes a remote failure through the execution bridge", async () => {
@@ -355,6 +428,28 @@ void describe("Remote HTTP try-on worker client", () => {
     assert.equal(result.status, "failed");
     assert.equal(lifecycle.currentJob?.status, TryOnJobStatus.FAILED);
     assert.equal(lifecycle.failedInput?.code, "try_on_remote_response_malformed");
+  });
+
+  void it("normalizes non-success artifact responses", async () => {
+    const { result, lifecycle } = await runRemoteBridge({
+      statusSequence: ["succeeded"],
+      artifactStatusCode: 404
+    });
+
+    assert.equal(result.status, "failed");
+    assert.equal(lifecycle.currentJob?.status, TryOnJobStatus.FAILED);
+    assert.equal(lifecycle.failedInput?.code, "try_on_remote_artifact_http_error");
+  });
+
+  void it("rejects empty artifact downloads", async () => {
+    const { result, lifecycle } = await runRemoteBridge({
+      statusSequence: ["succeeded"],
+      artifactBytes: ""
+    });
+
+    assert.equal(result.status, "failed");
+    assert.equal(lifecycle.currentJob?.status, TryOnJobStatus.FAILED);
+    assert.equal(lifecycle.failedInput?.code, "try_on_remote_artifact_empty");
   });
 
   void it("handles remote cancellation", async () => {

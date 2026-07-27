@@ -289,7 +289,25 @@ async function processTryOnJob(jobId: string, config: SmokeConfig): Promise<void
   );
 
   if (result.status !== "completed") {
-    throw new Error(`Worker iteration did not complete. Status: ${result.status}.`);
+    const failedJob = await prisma.tryOnJob.findUnique({
+      where: {
+        id: jobId
+      },
+      select: {
+        failureCode: true,
+        failureMessage: true
+      }
+    });
+    const failureDetails =
+      failedJob?.failureCode === null || failedJob?.failureCode === undefined
+        ? ""
+        : ` Failure code: ${failedJob.failureCode}. Failure message: ${
+            failedJob.failureMessage ?? "No failure message."
+          }`;
+
+    throw new Error(
+      `Worker iteration did not complete. Status: ${result.status}.${failureDetails}`
+    );
   }
 }
 

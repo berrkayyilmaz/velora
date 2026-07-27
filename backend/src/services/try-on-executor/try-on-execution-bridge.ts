@@ -290,7 +290,7 @@ export async function executeClaimedTryOnJob(
 
     await lifecycle.markSucceeded(claim.jobId, {
       storageKey: executionResult.outputArtifactPath,
-      mediaType: options.outputMediaType,
+      mediaType: executionResult.mediaType ?? options.outputMediaType,
       provider: options.provider,
       ...(options.providerVersion === undefined
         ? {}

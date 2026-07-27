@@ -26,7 +26,8 @@ export function createTryOnInferenceExecutorFromEnv(): TryOnInferenceExecutor | 
     submitPath: env.TRY_ON_REMOTE_WORKER_SUBMIT_PATH,
     statusPathTemplate: env.TRY_ON_REMOTE_WORKER_STATUS_PATH,
     cancelPathTemplate: env.TRY_ON_REMOTE_WORKER_CANCEL_PATH,
-    resultPathTemplate: env.TRY_ON_REMOTE_WORKER_RESULT_PATH
+    resultPathTemplate: env.TRY_ON_REMOTE_WORKER_RESULT_PATH,
+    artifactPathTemplate: env.TRY_ON_REMOTE_WORKER_ARTIFACT_PATH
   });
 
   return new RemoteHttpTryOnExecutor(client, {

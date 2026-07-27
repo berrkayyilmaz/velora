@@ -71,7 +71,8 @@ const envSchema = z.object({
   TRY_ON_REMOTE_WORKER_SUBMIT_PATH: z.string().trim().default("/try-on/jobs"),
   TRY_ON_REMOTE_WORKER_STATUS_PATH: z.string().trim().default("/try-on/jobs/{workerJobId}/status"),
   TRY_ON_REMOTE_WORKER_CANCEL_PATH: z.string().trim().default("/try-on/jobs/{workerJobId}/cancel"),
-  TRY_ON_REMOTE_WORKER_RESULT_PATH: z.string().trim().default("/try-on/jobs/{workerJobId}/result")
+  TRY_ON_REMOTE_WORKER_RESULT_PATH: z.string().trim().default("/try-on/jobs/{workerJobId}/result"),
+  TRY_ON_REMOTE_WORKER_ARTIFACT_PATH: z.string().trim().default("/jobs/{workerJobId}/artifact")
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

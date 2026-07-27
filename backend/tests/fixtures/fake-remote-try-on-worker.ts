@@ -1,5 +1,9 @@
 import { writeFile } from "node:fs/promises";
-import http, { type IncomingMessage, type ServerResponse } from "node:http";
+import http, {
+  type IncomingHttpHeaders,
+  type IncomingMessage,
+  type ServerResponse
+} from "node:http";
 
 import type { AddressInfo } from "node:net";
 
@@ -26,11 +30,16 @@ export type FakeRemoteTryOnWorkerScenario = {
   malformedRoute?: "submit" | "status" | "cancel" | "result";
   delayMs?: number;
   createOutputArtifact?: boolean;
+  artifactBytes?: string | Buffer;
+  artifactContentType?: string;
+  artifactStatusCode?: number;
 };
 
 export type FakeRemoteTryOnWorker = {
   baseUrl: string;
   submittedBodies: unknown[];
+  artifactRequestHeaders: IncomingHttpHeaders[];
+  artifactRequestPaths: string[];
   close(): Promise<void>;
 };
 
@@ -77,8 +86,13 @@ export async function startFakeRemoteTryOnWorker(
 ): Promise<FakeRemoteTryOnWorker> {
   const workerJobId = scenario.workerJobId ?? "remote-job-1";
   const submittedBodies: unknown[] = [];
+  const artifactRequestHeaders: IncomingHttpHeaders[] = [];
+  const artifactRequestPaths: string[] = [];
   const statusSequence = [...(scenario.statusSequence ?? ["succeeded"])];
   let lastSubmittedBody: { outputArtifactPath?: string } | null = null;
+  const artifactBytes = Buffer.isBuffer(scenario.artifactBytes)
+    ? scenario.artifactBytes
+    : Buffer.from(scenario.artifactBytes ?? "fake remote output\n", "utf8");
 
   const server = http.createServer((request, response) => {
     void (async () => {
@@ -147,10 +161,14 @@ export async function startFakeRemoteTryOnWorker(
         }
 
         const outputArtifactPath =
-          scenario.result?.outputArtifactPath ?? lastSubmittedBody?.outputArtifactPath ?? "";
+          scenario.result?.outputArtifactPath ?? `/remote-output/${workerJobId}.png`;
 
         if (scenario.createOutputArtifact && outputArtifactPath.length > 0) {
-          await writeFile(outputArtifactPath, "fake remote output\n", "utf8");
+          await writeFile(
+            lastSubmittedBody?.outputArtifactPath ?? outputArtifactPath,
+            "fake remote output\n",
+            "utf8"
+          );
         }
 
         sendJson(response, 200, {
@@ -160,10 +178,29 @@ export async function startFakeRemoteTryOnWorker(
           mediaType: scenario.result?.mediaType ?? "image/png",
           width: scenario.result?.width ?? 768,
           height: scenario.result?.height ?? 1024,
-          fileSize: scenario.result?.fileSize ?? 1024,
+          fileSize: scenario.result?.fileSize ?? artifactBytes.byteLength,
           modelId: scenario.result?.modelId ?? "remote-vton",
           modelVersion: scenario.result?.modelVersion ?? "fake-remote"
         });
+        return;
+      }
+
+      if (method === "GET" && url.pathname === `/try-on/jobs/${workerJobId}/artifact`) {
+        artifactRequestHeaders.push(request.headers);
+        artifactRequestPaths.push(url.pathname);
+
+        if (scenario.artifactStatusCode !== undefined && scenario.artifactStatusCode !== 200) {
+          sendJson(response, scenario.artifactStatusCode, {
+            error: "artifact_unavailable"
+          });
+          return;
+        }
+
+        response.writeHead(200, {
+          "content-type": scenario.artifactContentType ?? "image/png",
+          "content-length": String(artifactBytes.byteLength)
+        });
+        response.end(artifactBytes);
         return;
       }
 
@@ -186,6 +223,8 @@ export async function startFakeRemoteTryOnWorker(
   return {
     baseUrl: `http://127.0.0.1:${address.port}`,
     submittedBodies,
+    artifactRequestHeaders,
+    artifactRequestPaths,
     close: () =>
       new Promise<void>((resolve, reject) => {
         server.close((error) => {

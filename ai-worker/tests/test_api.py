@@ -126,6 +126,11 @@ class RaisingExecutor:
         raise RuntimeError(f"Unexpected executor failure for {worker_job_id}.")
 
 
+def submit_stored_job(store: InMemoryJobStore, request: dict[str, Any]) -> str:
+    job = store.submit(SubmitInferenceJobRequest.model_validate(request))
+    return job.worker_job_id
+
+
 def test_health_endpoint() -> None:
     with TestClient(create_app()) as client:
         response = client.get("/health")
@@ -141,7 +146,7 @@ def test_submit_returns_queued_and_background_status_is_responsive(tmp_path: Pat
     executor = BlockingExecutor()
     store = InMemoryJobStore(executor)
 
-    with TestClient(create_app(store)) as client:
+    with TestClient(create_app(store, artifact_output_directory=tmp_path)) as client:
         output_path = tmp_path / "result.png"
         started_at = time.monotonic()
 
@@ -173,9 +178,11 @@ def test_submit_returns_queued_and_background_status_is_responsive(tmp_path: Pat
         executor.release.set()
         succeeded_body = wait_for_status(client, worker_job_id, "succeeded")
 
-        assert succeeded_body["outputArtifactPath"] == str(output_path)
+        artifact_path = Path(succeeded_body["outputArtifactPath"])
+        assert artifact_path.parent == tmp_path
         assert succeeded_body["durationMs"] == 100.0
-        assert output_path.exists()
+        assert artifact_path.exists()
+        assert not output_path.exists()
 
         result_response = client.get(f"/jobs/{worker_job_id}/result")
 
@@ -183,12 +190,12 @@ def test_submit_returns_queued_and_background_status_is_responsive(tmp_path: Pat
     result_body = result_response.json()
     assert result_body["workerJobId"] == worker_job_id
     assert result_body["status"] == "succeeded"
-    assert result_body["outputArtifactPath"] == str(output_path)
+    assert result_body["outputArtifactPath"] == str(artifact_path)
     assert result_body["modelId"] == "test-executor"
 
 
 def test_submit_status_success_and_result_contract_with_fake_executor(tmp_path: Path) -> None:
-    with TestClient(create_app()) as client:
+    with TestClient(create_app(artifact_output_directory=tmp_path)) as client:
         output_path = tmp_path / "result.png"
 
         submit_response = client.post("/jobs", json=create_request(output_path))
@@ -202,8 +209,10 @@ def test_submit_status_success_and_result_contract_with_fake_executor(tmp_path: 
         succeeded_body = wait_for_status(client, worker_job_id, "succeeded")
 
         assert succeeded_body["workerJobId"] == worker_job_id
-        assert succeeded_body["outputArtifactPath"] == str(output_path)
-        assert output_path.exists()
+        artifact_path = Path(succeeded_body["outputArtifactPath"])
+        assert artifact_path.parent == tmp_path
+        assert artifact_path.exists()
+        assert not output_path.exists()
 
         result_response = client.get(f"/jobs/{worker_job_id}/result")
 
@@ -211,7 +220,7 @@ def test_submit_status_success_and_result_contract_with_fake_executor(tmp_path: 
     result_body = result_response.json()
     assert result_body["workerJobId"] == worker_job_id
     assert result_body["status"] == "succeeded"
-    assert result_body["outputArtifactPath"] == str(output_path)
+    assert result_body["outputArtifactPath"] == str(artifact_path)
     assert result_body["mediaType"] == "image/png"
     assert result_body["width"] == 768
     assert result_body["height"] == 1024
@@ -220,11 +229,116 @@ def test_submit_status_success_and_result_contract_with_fake_executor(tmp_path: 
     assert result_body["modelVersion"] == "fake-remote-0.1"
 
 
+def test_successful_artifact_download_returns_bytes_and_media_type(tmp_path: Path) -> None:
+    with TestClient(create_app(artifact_output_directory=tmp_path)) as client:
+        output_path = tmp_path / "result.png"
+        submit_response = client.post("/jobs", json=create_request(output_path))
+        worker_job_id = submit_response.json()["workerJobId"]
+        succeeded_body = wait_for_status(client, worker_job_id, "succeeded")
+        artifact_path = Path(succeeded_body["outputArtifactPath"])
+
+        artifact_response = client.get(f"/jobs/{worker_job_id}/artifact")
+
+    assert artifact_response.status_code == 200
+    assert artifact_response.headers["content-type"] == "image/png"
+    assert artifact_response.content == artifact_path.read_bytes()
+    assert artifact_path != output_path
+
+
+def test_unknown_job_artifact_returns_404() -> None:
+    with TestClient(create_app()) as client:
+        response = client.get("/jobs/missing/artifact")
+
+    assert response.status_code == 404
+
+
+def test_unfinished_failed_and_cancelled_jobs_cannot_download_artifacts(tmp_path: Path) -> None:
+    queued_store = InMemoryJobStore()
+    queued_job_id = submit_stored_job(queued_store, create_request(tmp_path / "queued.png"))
+
+    with TestClient(create_app(queued_store, artifact_output_directory=tmp_path)) as queued_client:
+        queued_response = queued_client.get(f"/jobs/{queued_job_id}/artifact")
+
+    assert queued_response.status_code == 409
+    assert queued_response.json()["detail"] == "Worker job artifact is not ready."
+
+    processing_executor = BlockingExecutor()
+    processing_store = InMemoryJobStore(processing_executor)
+    with TestClient(
+        create_app(processing_store, artifact_output_directory=tmp_path)
+    ) as processing_client:
+        submit_response = processing_client.post(
+            "/jobs", json=create_request(tmp_path / "processing.png")
+        )
+        processing_job_id = submit_response.json()["workerJobId"]
+        assert processing_executor.started.wait(timeout=1.0)
+        processing_response = processing_client.get(f"/jobs/{processing_job_id}/artifact")
+        processing_executor.release.set()
+
+    assert processing_response.status_code == 409
+    assert processing_response.json()["detail"] == "Worker job artifact is not ready."
+
+    failed_store = InMemoryJobStore(FailingExecutor())
+    with TestClient(create_app(failed_store, artifact_output_directory=tmp_path)) as failed_client:
+        submit_response = failed_client.post("/jobs", json=create_request(tmp_path / "failed.png"))
+        failed_job_id = submit_response.json()["workerJobId"]
+        wait_for_status(failed_client, failed_job_id, "failed")
+        failed_response = failed_client.get(f"/jobs/{failed_job_id}/artifact")
+
+    assert failed_response.status_code == 409
+    assert failed_response.json()["detail"] == "Worker job did not produce an artifact."
+
+    cancelled_store = InMemoryJobStore()
+    cancelled_job_id = submit_stored_job(
+        cancelled_store, create_request(tmp_path / "cancelled.png")
+    )
+    cancelled_store.cancel(cancelled_job_id)
+
+    with TestClient(
+        create_app(cancelled_store, artifact_output_directory=tmp_path)
+    ) as cancelled_client:
+        cancelled_response = cancelled_client.get(f"/jobs/{cancelled_job_id}/artifact")
+
+    assert cancelled_response.status_code == 409
+    assert cancelled_response.json()["detail"] == "Worker job did not produce an artifact."
+
+
+def test_missing_artifact_file_returns_404(tmp_path: Path) -> None:
+    with TestClient(create_app(artifact_output_directory=tmp_path)) as client:
+        output_path = tmp_path / "missing-after-success.png"
+        submit_response = client.post("/jobs", json=create_request(output_path))
+        worker_job_id = submit_response.json()["workerJobId"]
+        succeeded_body = wait_for_status(client, worker_job_id, "succeeded")
+        Path(succeeded_body["outputArtifactPath"]).unlink()
+
+        artifact_response = client.get(f"/jobs/{worker_job_id}/artifact")
+
+    assert artifact_response.status_code == 404
+    assert artifact_response.json()["detail"] == "Worker job artifact was not found."
+
+
+def test_artifact_path_outside_configured_output_directory_is_rejected(tmp_path: Path) -> None:
+    artifact_root = tmp_path / "allowed"
+    artifact_root.mkdir()
+    outside_path = tmp_path / "outside.png"
+    store = InMemoryJobStore()
+    worker_job_id = submit_stored_job(store, create_request(outside_path))
+    store.execute_job(worker_job_id)
+
+    with TestClient(create_app(store, artifact_output_directory=artifact_root)) as client:
+        artifact_response = client.get(f"/jobs/{worker_job_id}/artifact")
+
+    assert artifact_response.status_code == 409
+    assert artifact_response.json()["detail"] == (
+        "Worker job artifact is outside the configured output directory."
+    )
+
+
 def test_queued_cancellation_prevents_execution(tmp_path: Path) -> None:
     executor = BlockingExecutor()
     store = InMemoryJobStore(executor)
 
-    with TestClient(create_app(store, max_workers=1)) as client:
+    with TestClient(create_app(store, max_workers=1, artifact_output_directory=tmp_path)) as client:
         first_response = client.post("/jobs", json=create_request(tmp_path / "first.png"))
         first_job_id = first_response.json()["workerJobId"]
         assert executor.started.wait(timeout=1.0)
@@ -255,7 +369,7 @@ def test_processing_cancellation_is_not_overwritten_by_completion(tmp_path: Path
     executor = BlockingExecutor()
     store = InMemoryJobStore(executor)
 
-    with TestClient(create_app(store)) as client:
+    with TestClient(create_app(store, artifact_output_directory=tmp_path)) as client:
         submit_response = client.post("/jobs", json=create_request(tmp_path / "cancelled.png"))
         worker_job_id = submit_response.json()["workerJobId"]
         assert executor.started.wait(timeout=1.0)
@@ -277,7 +391,7 @@ def test_executor_failure_result(tmp_path: Path) -> None:
     executor = FailingExecutor()
     store = InMemoryJobStore(executor)
 
-    with TestClient(create_app(store)) as client:
+    with TestClient(create_app(store, artifact_output_directory=tmp_path)) as client:
         submit_response = client.post("/jobs", json=create_request(tmp_path / "failed.png"))
         worker_job_id = submit_response.json()["workerJobId"]
 
@@ -296,7 +410,7 @@ def test_executor_failure_result(tmp_path: Path) -> None:
 def test_executor_exception_becomes_failed_without_crashing(tmp_path: Path) -> None:
     store = InMemoryJobStore(RaisingExecutor())
 
-    with TestClient(create_app(store)) as client:
+    with TestClient(create_app(store, artifact_output_directory=tmp_path)) as client:
         submit_response = client.post("/jobs", json=create_request(tmp_path / "exception.png"))
         worker_job_id = submit_response.json()["workerJobId"]
 

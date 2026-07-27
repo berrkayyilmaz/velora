@@ -1,4 +1,8 @@
+import { mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import path from "node:path";
+
 import type {
+  RemoteTryOnArtifactDownload,
   RemoteTryOnJobStatusResponse,
   RemoteTryOnResultMetadataResponse,
   RemoteTryOnWorkerClient
@@ -99,24 +103,86 @@ function remoteCancelledResult(
 function successResult(
   request: TryOnInferenceRequest,
   resultMetadata: RemoteTryOnResultMetadataResponse,
+  localArtifact: { outputArtifactPath: string; fileSize: number; mediaType: string },
   durationMs: number
 ): TryOnInferenceExecutionResult {
+  const normalizedMetadata = {
+    ...resultMetadata,
+    outputArtifactPath: localArtifact.outputArtifactPath,
+    mediaType: resultMetadata.mediaType ?? localArtifact.mediaType,
+    fileSize: localArtifact.fileSize
+  };
+
   return {
     success: true,
     exitCode: null,
-    stdout: JSON.stringify(resultMetadata),
+    stdout: JSON.stringify(normalizedMetadata),
     stderr: "",
     durationMs,
     timedOut: false,
     cancelled: false,
     retryable: false,
-    outputArtifactPath: resultMetadata.outputArtifactPath || request.outputArtifactPath,
+    outputArtifactPath: localArtifact.outputArtifactPath,
+    mediaType: resultMetadata.mediaType ?? localArtifact.mediaType,
     width: resultMetadata.width,
     height: resultMetadata.height,
-    fileSize: resultMetadata.fileSize,
+    fileSize: localArtifact.fileSize,
     modelId: resultMetadata.modelId,
     modelVersion: resultMetadata.modelVersion
   };
+}
+
+async function persistDownloadedArtifact(
+  outputArtifactPath: string,
+  artifact: RemoteTryOnArtifactDownload
+): Promise<{ outputArtifactPath: string; fileSize: number; mediaType: string }> {
+  if (artifact.bytes.byteLength === 0) {
+    throw new RemoteTryOnWorkerClientError(
+      "try_on_remote_artifact_empty",
+      "Remote try-on worker returned an empty artifact.",
+      false
+    );
+  }
+
+  const outputDirectory = path.dirname(outputArtifactPath);
+  const temporaryPath = path.join(
+    outputDirectory,
+    `.${path.basename(outputArtifactPath)}.${process.pid}.${Date.now()}.tmp`
+  );
+
+  try {
+    await mkdir(outputDirectory, { recursive: true });
+    await writeFile(temporaryPath, artifact.bytes);
+    const temporaryStats = await stat(temporaryPath);
+
+    if (temporaryStats.size === 0) {
+      throw new RemoteTryOnWorkerClientError(
+        "try_on_remote_artifact_empty",
+        "Remote try-on worker returned an empty artifact.",
+        false
+      );
+    }
+
+    await rename(temporaryPath, outputArtifactPath);
+
+    return {
+      outputArtifactPath,
+      fileSize: temporaryStats.size,
+      mediaType: artifact.mediaType
+    };
+  } catch (error) {
+    await rm(temporaryPath, { force: true }).catch(() => undefined);
+
+    if (error instanceof RemoteTryOnWorkerClientError) {
+      throw error;
+    }
+
+    throw new RemoteTryOnWorkerClientError(
+      "try_on_remote_artifact_write_failed",
+      "Downloaded try-on artifact could not be written locally.",
+      false
+    );
+  }
 }
 
 export class RemoteHttpTryOnExecutor implements TryOnInferenceExecutor {
@@ -159,7 +225,12 @@ export class RemoteHttpTryOnExecutor implements TryOnInferenceExecutor {
 
         if (status.status === "succeeded") {
           const resultMetadata = await this.client.fetchResultMetadata(status.workerJobId);
-          return successResult(request, resultMetadata, Date.now() - startedAt);
+          const artifact = await this.client.downloadArtifact(status.workerJobId);
+          const localArtifact = await persistDownloadedArtifact(
+            request.outputArtifactPath,
+            artifact
+          );
+          return successResult(request, resultMetadata, localArtifact, Date.now() - startedAt);
         }
 
         if (status.status === "failed") {
